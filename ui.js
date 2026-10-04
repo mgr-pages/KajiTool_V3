@@ -885,21 +885,23 @@ function openPad(kind, idx){
   }
   updatePad();
   document.getElementById('modal').classList.add('show');
-  // 温度の一覧は小さい画面だと収まらないので、今の温度が隠れている時だけ見える所まで送る
-  // (中央に送ると、見えていた「閉じる」まで上に隠れてしまう)
-  const curBtn = kind === 'temp' && box && box.querySelector('.cand.cur');
-  if(curBtn) curBtn.scrollIntoView({ block: 'nearest' });
+  // 温度の一覧は、開いた時に今の温度(50℃刻みでなければ一番近い値)を真ん中に置く
+  const tw = kind === 'temp' && document.getElementById('tempWheel');
+  const near = tw && tw.querySelector('.tw-item.near');
+  if(near) tw.scrollTop = near.offsetTop - (tw.clientHeight - near.offsetHeight) / 2;
 }
 
 // 温度は技で 50℃ 刻み(−50・−150・−300・+300)にしか動かないので、テンキーで4桁打つ代わりに
-// 50℃ 刻みの値を並べて1回押すだけで入れられるようにする。1行4つにして、行の先頭を200℃の倍数
-// (会心率+400%・消費半減などの温度)にそろえる。上は 2200℃ か、今の温度から火力上げ1回分の高い方まで。
+// 50℃ 刻みの値を並べて1回押すだけで入れられるようにする。全部(45個ほど)を並べると多すぎて見にくいので、
+// 一度に5つ見えるスクロールの一覧にし、開いた時は今の温度を真ん中に置く(手直しで入れる温度は、たいてい今の近く。
+// 利用者の指示)。上は 2200℃ か、今の温度から火力上げ1回分の高い方まで。
 function tempCandHtml(){
   const cur = G.temp;
   const top = Math.max(2200, Math.ceil((cur + 300) / 50) * 50);
   const vals = []; for(let v = 0; v <= top; v += 50) vals.push(v);
-  return `<div class="cand-row temp">${vals.map(v =>
-        `<button class="cand${v === cur ? ' cur' : ''}" onclick="pickTemp(${v})">${v}</button>`).join('')}</div>`
+  const near = Math.min(top, Math.max(0, Math.round(cur / 50) * 50));
+  return `<div class="tw" id="tempWheel">${vals.map(v =>
+        `<button class="tw-item${v === cur ? ' cur' : ''}${v === near ? ' near' : ''}" onclick="pickTemp(${v})">${v}</button>`).join('')}</div>`
     + `<button class="cand-more" onclick="showKeys()">一覧に無い値を自分で入力する</button>`;
 }
 function pickTemp(v){
