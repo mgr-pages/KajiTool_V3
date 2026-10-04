@@ -417,7 +417,6 @@ table.sk .cst{text-align:right; font-weight:700;}
 .zrow.zth input{flex:0 1 80px;}
 .zth-note{font-size:11px; color:var(--dim); margin:-2px 0 4px;}
 /* 推奨手順の注意書き。手順を信じ切らないよう、説明文より目立つ色で出す */
-.plan-note{font-size:12px; font-weight:700; color:var(--ember); margin-bottom:6px;}
 /* --- 手動設定パネル --- */
 .zpanel{border:1px solid var(--acc); border-radius:8px; padding:10px; margin-top:10px;}
 .zpanel .zhead{font-size:12.5px; font-weight:600; color:var(--acc); margin-bottom:2px;}
@@ -639,7 +638,6 @@ body{background:transparent;}
 .pk-crumb:active{background:var(--sunk);}
 .pk-crumb.now{background:transparent; border-color:transparent; box-shadow:none; color:var(--text); padding:6px 4px;}
 .pk-sep{color:var(--dim); font-size:10px;}
-.pk-q{font-size:13px; color:var(--dim); margin:2px 0 8px;}
 .pk-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
 .pk-grid.jobs{grid-template-columns:1fr;}
 .pk-btn{background:linear-gradient(180deg,#fffaf0,var(--panel)); border:1px solid var(--line); color:var(--text);
