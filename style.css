@@ -60,7 +60,6 @@ input,select,button{font-family:inherit; -webkit-appearance:none; appearance:non
 .hdr-title .gear{font-size:10.5px; color:var(--dim); white-space:nowrap;
   margin-left:auto; flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;}
 
-.cand-q{font-size:14px; font-weight:700; text-align:center; margin:2px 0 10px;}
 .cand-grp{margin-bottom:10px;}
 .cand-h{font-size:12px; display:block; margin-bottom:5px; font-weight:700;}
 .cand-h.n{color:var(--dim);}
@@ -147,7 +146,6 @@ input,select,button{font-family:inherit; -webkit-appearance:none; appearance:non
 .brow.half{width:50%; margin-left:auto; margin-right:auto;}
 .bar-wrap{flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:2px;}
 .bar-wrap.left{align-items:flex-end;}
-.zone-lbl{font-size:9.5px; color:var(--green); font-weight:700; font-variant-numeric:tabular-nums;}
 .bar{position:relative; width:100%; height:16px; background:var(--sunk); border:1px solid var(--line);
   border-radius:2px; overflow:hidden;}
 .bar i{position:absolute; display:block;}
@@ -164,7 +162,6 @@ input,select,button{font-family:inherit; -webkit-appearance:none; appearance:non
 .bar .m-curline{top:0; bottom:0; width:2px; background:#4a3418; z-index:6;}
 /* 左列のバーは右から左へ伸びるので、全体をミラーする */
 .bar.flip{ transform:scaleX(-1); }
-.pw-lbl{font-size:9px; color:var(--dim); font-variant-numeric:tabular-nums; letter-spacing:-.2px;}
 
 .cell{width:96px; flex:0 0 96px; background:var(--panel); border:2px solid var(--line);
   border-radius:5px; overflow:hidden;}
@@ -185,7 +182,7 @@ input,select,button{font-family:inherit; -webkit-appearance:none; appearance:non
    盤面の6つの値は常に比較対象なので、等幅数字と字形を明示して桁を揃える。
    0と6、1と7の取り違えは実プレイで致命的なため、判別性の高い書体から順に指定する。
    外部フォントは読み込まないので単一ファイルのまま。 */
-.cell .cur, .cell .zn, .stat .val, .zone-lbl, .pw-lbl,
+.cell .cur, .cell .zn, .stat .val,
 .pad-disp, .pad-res, table.sk, .zrow input, .cand, .pexec .s, .hstep .ht{
   font-family:"IBM Plex Sans","Source Sans 3","Noto Sans","Segoe UI",
     "Hiragino Sans","Noto Sans JP",system-ui,-apple-system,sans-serif;
@@ -304,8 +301,6 @@ table.sk .cst{text-align:right; font-weight:700;}
   .cell .zn{ font-size:17px; }
   .cell .zn span{ padding:6px 0; }
   .bar{ height:26px; }
-  .zone-lbl{ font-size:13px; }
-  .pw-lbl{ font-size:12px; }
 
   /* 右カラムに入る要素 */
   .side{ position:sticky; top:88px; }
@@ -359,7 +354,13 @@ table.sk .cst{text-align:right; font-weight:700;}
 .bar-ctl label{font-size:11.5px; color:var(--dim); white-space:nowrap;}
 .bar-ctl select{flex:1; background:var(--bg2); border:1px solid var(--line); color:var(--text);
   padding:8px; border-radius:5px; font-size:15px;}
-.legend{display:flex; flex-wrap:wrap; gap:5px 12px; margin-top:12px; padding:10px;
+/* 色の見方は「?」を押した時だけ出す */
+.lg-row{display:flex; justify-content:flex-end; margin-top:6px;}
+.lg-toggle{width:26px; height:26px; border-radius:50%; border:1px solid var(--line); background:var(--panel);
+  color:var(--dim); font-size:13px; font-weight:800; line-height:1; padding:0; cursor:pointer;}
+.lg-toggle.on{background:var(--gold); border-color:var(--gold); color:#fbf3e0;}
+.legend[hidden]{display:none;}
+.legend{display:flex; flex-wrap:wrap; gap:5px 12px; margin-top:6px; padding:10px;
   background:var(--panel); border:1px solid var(--line); border-radius:6px; font-size:11px; color:var(--dim);}
 .legend span{display:flex; align-items:center; gap:5px;}
 .legend i{width:13px; height:9px; border-radius:2px; display:inline-block; flex:0 0 13px;}
@@ -436,19 +437,17 @@ table.sk .cst{text-align:right; font-weight:700;}
   animation:litblink 1.1s ease-in-out infinite;}
 @keyframes litblink{0%,100%{outline-color:var(--acc);}50%{outline-color:transparent;}}
 .cell.litdim{opacity:.35;}
-/* 推奨手で打つマス・結果を入力するマスに札を付ける。枠の色だけでは意味が伝わらないため。
-   点灯・未使用の札はこの後に書いてあり、重なった時はそちらが勝つ。 */
-.cell.hi .idx::after, .cell.need .idx::after{display:inline-block; margin-left:4px; padding:0 4px;
-  border-radius:3px; font-size:9px; line-height:14px; letter-spacing:0; color:#fbf3e0; vertical-align:1px;}
-.cell.hi .idx::after{content:'対象'; background:var(--ember);}
-.cell.need .idx::after{content:'入力'; background:var(--ember);}
-@media (min-width:760px){ .cell.hi .idx::after, .cell.need .idx::after{font-size:11px; line-height:17px;} }
-.cell.mdr .idx::after{content:'戻り'; background:var(--gold);}
-.cell.hi.mdr .idx::after{content:'対象・戻り';}
+/* 推奨手で打つマス・結果を入力するマスなどに札を付ける。枠の色だけでは意味が伝わらないため。
+   札は ui.js の renderBoard が並べて出す(重なっても全部出す) */
+.cell .idx{white-space:nowrap;}
+.cell .idx .tag{display:inline-block; margin-left:3px; padding:0 4px; border-radius:3px; font-size:9px; line-height:14px;
+  letter-spacing:0; color:#fbf3e0; background:var(--ember); vertical-align:1px;}
+.cell .idx .tag.mdr{background:var(--gold);}
+.cell .idx .tag.lit{background:none; color:#e0a020; padding:0; font-size:10px; font-weight:700;}
+@media (min-width:760px){ .cell .idx .tag{font-size:11px; line-height:17px;} .cell .idx .tag.lit{font-size:12px;} }
 .cell.lit{outline:2px solid #e0a020; outline-offset:-2px;}
 /* 選び直せる間も、選んだ点灯マスだけは点滅を止めて他のマスと見分けられるようにする */
 .cell.litpick.lit{animation:none;}
-.cell.lit .idx::after{content:' 点灯'; font-size:10px; color:#e0a020; background:none; padding:0; margin:0;}
 .calcbar{height:4px; background:var(--line); border-radius:2px; overflow:hidden; margin-top:6px;}
 .calcbar > div{height:100%; width:0%; background:var(--acc); transition:width .12s linear;}
 .zdirty{font-size:11.5px; color:var(--acc); margin-left:8px;}
@@ -553,6 +552,8 @@ body{background:transparent;}
 .calc.done-step{box-shadow:inset 0 1px 0 rgba(255,255,255,.25), 0 4px 0 #0e3f1f, 0 6px 12px rgba(14,63,31,.25);}
 .calc.done-step:active{box-shadow:inset 0 1px 0 rgba(255,255,255,.2), 0 1px 0 #0e3f1f;}
 .calc:disabled{box-shadow:none; text-shadow:none; transform:none;}
+/* 光ったマスの選択待ち: 押せないが、何をすればよいかはこのボタンだけに出すので、薄くせずに読めるようにする(利用者の指示) */
+#calcBtn.wait:disabled{opacity:1; background:var(--panel); color:var(--ember); box-shadow:inset 0 0 0 2px var(--ember);}
 
 /* 推奨手: 技名を見出しらしく */
 .rec-skill{font-size:18px; letter-spacing:.02em;}
@@ -583,16 +584,18 @@ body{background:transparent;}
    ・取り消しや閉じるは、言葉で書いた控えめなボタンにする
    ===================================================================== */
 /* 主ボタンと取り消しを1行に並べる */
-.act-row{display:flex; gap:8px; align-items:stretch;}
+.act-row{display:flex; gap:12px; align-items:stretch;}
 .act-row .calc{flex:1 1 auto; min-width:0;}
 #calcBtn{display:flex; flex-direction:column; align-items:center; justify-content:center;
   min-height:56px; padding:8px 13px; line-height:1.2;}
 #calcBtn .btn-main{display:block;}
 #calcBtn .btn-sub{display:block; margin-top:2px; font-size:11.5px; font-weight:600; letter-spacing:.04em; opacity:.88;}
-.sub-btn{flex:0 0 auto; padding:0 14px; border-radius:12px; border:1px solid var(--line);
-  background:var(--panel); color:var(--dim); font-size:13px; font-weight:700; box-shadow:var(--raise);}
-.sub-btn:active{transform:translateY(2px); box-shadow:none; background:var(--sunk);}
-@media (min-width:760px){ #calcBtn{min-height:60px;} #calcBtn .btn-sub{font-size:12.5px;} .sub-btn{font-size:14px;} }
+/* 取り消しは補助の操作なので、主ボタンより小さく目立たなくする(利用者の指示。主ボタンと同じ大きさで隣にあり、
+   押し間違えやすかった)。押せる大きさの目安(高さ44px)は保つ */
+.sub-btn{flex:0 0 auto; align-self:center; height:44px; padding:0 10px; border-radius:10px; border:1px dashed var(--line);
+  background:transparent; color:var(--dim); font-size:11.5px; font-weight:700;}
+.sub-btn:active{background:var(--sunk);}
+@media (min-width:760px){ #calcBtn{min-height:60px;} #calcBtn .btn-sub{font-size:12.5px;} .sub-btn{font-size:12.5px;} }
 
 /* 入力画面: 右上に「閉じる」(これまでは画面の外をタップするしか閉じ方が無かった) */
 .pad{position:relative;}
