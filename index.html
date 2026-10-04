@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>鍛冶アドバイザーV2.34</title>
+<title>鍛冶アドバイザーV2.35</title>
 <!-- アプリのアイコン。PNG は icon.svg から node tools/make-icons.js で作る -->
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="style.css?v=aec58c59">
+<link rel="stylesheet" href="style.css?v=14e85315">
 </head>
 <body>
 
@@ -44,8 +44,9 @@
 <div class="main">
 <div class="board">
   <div id="board"></div>
-  <!-- ゲージの見方。色の意味が画面のどこにも無かったため常に出す -->
-  <div class="legend" id="legend">
+  <!-- ゲージの色の見方。常に出すと文字が増えるので、「?」を押した時だけ出す(利用者の指示) -->
+  <div class="lg-row"><button class="lg-toggle" id="lgBtn" onclick="toggleLegend()" aria-expanded="false" aria-controls="legend" aria-label="ゲージの色の見方">?</button></div>
+  <div class="legend" id="legend" hidden>
     <span><i class="lg-green"></i>成功ゾーン</span>
     <span><i class="lg-blue"></i>通常の伸び</span>
     <span><i class="lg-red"></i>会心の伸び</span>
@@ -66,14 +67,14 @@
   <div id="calcBar" class="calcbar" style="display:none"><div></div></div>
 </div>
 
-<details class="acc" open>
+<details class="acc" id="planAcc" open style="display:none">
   <summary>推奨手順(目安)</summary>
-  <div class="body" id="detail">まだ計算していません</div>
+  <div class="body" id="detail"></div>
 </details>
 
 <details class="acc">
   <summary>技一覧(現在温度)</summary>
-  <div class="body"><table class="sk" id="skTable"></table></div>
+  <div class="body"><table class="sk" id="skTable"></table><div id="skNote"></div></div>
 </details>
 
 <details class="acc" id="setAcc">
@@ -191,9 +192,9 @@
   </div>
 </div>
 
-<script src="engine.js?v=aec58c59"></script>
-<script src="mc-pool.js?v=aec58c59"></script>
-<script src="gamelog.js?v=aec58c59"></script>
-<script src="ui.js?v=aec58c59"></script>
+<script src="engine.js?v=14e85315"></script>
+<script src="mc-pool.js?v=14e85315"></script>
+<script src="gamelog.js?v=14e85315"></script>
+<script src="ui.js?v=14e85315"></script>
 </body>
 </html>

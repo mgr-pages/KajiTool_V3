@@ -117,22 +117,6 @@ function markersFor(m, skill, massIdx){
   return out;
 }
 
-// バー下の数値列。右向き(右列)は 通常最小→通常最大→会心最小→会心最大 の順、
-// 左向き(左列)はその鏡像になるよう並べ替える。
-function scaleLabel(mk, flip){
-  const r = mk.raw;
-  if(!G.showRange) return '';
-  if(!r.blue) return '<span style="color:var(--dim)">技を選ぶと表示</span>';
-  const items = [
-    {v:r.blue[0], c:'var(--blue)'},
-    {v:r.blue[1], c:'var(--blue)'},
-    {v:r.red[0],  c:'var(--red)'},
-    {v:r.red[1],  c:'var(--red)'}
-  ];
-  const arr = flip ? items.slice().reverse() : items;
-  return arr.map(x=>`<span style="color:${x.c}">${x.v}</span>`).join('<span style="color:#a89268">〜</span>');
-}
-
 function traitNote(){
   if(G.trait === 'shuchu') return `<div class="mk-note">
       <div><b class="mk-boost">★ 会心率+400%</b> 温度が200の倍数(400の倍数を除く)。
@@ -200,18 +184,20 @@ function renderBoard(){
                 + (pick && !pickable && !m.off ? ' litdim' : '')
                 + (litMassIndex === i ? ' lit' : '')
                 + (!m.off && mdr && mdr.has(i) ? ' mdr' : '');
-      const zoneTxt = flip ? `${m.zoneHigh} 〜 ${m.zoneLow}` : `${m.zoneLow} 〜 ${m.zoneHigh}`;
+      // ゲージの上のゾーンの数字(マスの中と同じ)と、下の伸びの数字は出さない(利用者の指示)。色の帯と印だけで見る
+      // マスの札(入力・対象・戻り・点灯)。点灯マスを叩く手のように重なることがあるので、並べて全部出す
+      // (前は CSS で1つだけ出していたため、点灯マスでは「対象」「入力」が「点灯」に隠れていた)
+      const tags = m.off ? '' :
+          (G.pending.includes(i) ? '<span class="tag">入力</span>' : hiTg.includes(i) ? '<span class="tag">対象</span>' : '')
+        + (mdr && mdr.has(i) ? '<span class="tag mdr">戻り</span>' : '')
+        + (litMassIndex === i ? '<span class="tag lit">点灯</span>' : '');
       const barBlock = m.off ? `<div class="bar-wrap ${flip?'left':'right'}"></div>` :
-        `<div class="bar-wrap ${flip?'left':'right'}">
-           <div class="zone-lbl">${zoneTxt}</div>
-           ${buildBar(mk, flip)}
-           <div class="pw-lbl">${scaleLabel(mk, flip)}</div>
-         </div>`;
+        `<div class="bar-wrap ${flip?'left':'right'}">${buildBar(mk, flip)}</div>`;
       const cell =
         `<div class="cell${cls}${G.fx && G.fx.i===i ? ' fx-'+G.fx.k : ''}"${
             m.off ? '' : (pick ? (pickable ? ` onclick="pickLit(${i})"` : '')
                                : ` onclick="openPad('mass',${i})"`)}>
-           <div class="idx">マス${i+1}</div>
+           <div class="idx">マス${i+1}${tags}</div>
            <div class="cur">${Math.round(m.current)}</div>
            <div class="zn"><span>${m.zoneLow}</span><span>${m.zoneHigh}</span></div>
          </div>`;
@@ -277,11 +263,9 @@ function renderHeader(){
     hsBox.classList.toggle('used', !G.hs && !!G.hsUsed);
   }
   const b = [];
-  // 温度の効果(通常・会心率+400% など)と「開始直後」は、見ても分かりにくく打ち方も変わらないので出さない(利用者の指示)。
-  // 残すのは、入力や点灯の選択など、利用者に操作を求める案内だけ。
-  if(G.pending.length) b.push(`<span class="badge wait">数値の入力待ち</span>`);
-  else if(needLitPick()) b.push(`<span class="badge wait">光ったマスをタップしてください</span>`);
-  else if(litMassIndex !== null)
+  // 出すのは点灯中のマス(今の状態)だけ。温度の効果と「開始直後」は、見ても分かりにくく打ち方も変わらないので出さない。
+  // 数値の入力待ちと光ったマスの選択は、マスの「入力」の印・入力の画面・主ボタンで分かるので出さない(どれも利用者の指示)
+  if(!G.pending.length && !needLitPick() && litMassIndex !== null)
     b.push(`<span class="badge rate">マス${litMassIndex+1}が点灯中${litPickMode()?'(別のマスをタップで選び直し)':''}</span>`);
   const bx = document.getElementById('badges');
   bx.innerHTML = b.join('');
@@ -308,6 +292,8 @@ function renderSkills(){
     rows.push(`<tr><td colspan="4" style="font-size:11px;color:var(--dim)">`
       + `上は通常マスの値。点灯中のマス${litMassIndex+1}はロール2倍・会心率+${Math.round(LIT_BONUS*100)}%</td></tr>`);
   document.getElementById('skTable').innerHTML = rows.join('');
+  // 温度の効果の説明(会心率+400%・消費半減など)。毎手見るものではないので、技一覧の中に置く
+  const note = document.getElementById('skNote'); if(note) note.innerHTML = traitNote();
 }
 
 // 推奨手の後に戻りが起きる時の一行。どのマスが減りそうかも出す
@@ -356,13 +342,17 @@ function renderRec(){
   const el = document.getElementById('rec');
   if(G.pending.length){ el.innerHTML = ''; return; }
   if(!G.rec){
-    el.innerHTML = '<div class="rec-empty">'+(G.msg||'盤面・温度・集中力を合わせて「推奨手を計算」')+'</div>';
+    // 計算を押す直前に目に入る所なので、ゲームと合わせる案内はここに出す。要るのは打ち始める前
+    // (ゲームの途中でアプリを開いた時など)だけなので、1手でも反映したら出さない
+    const hint = G.msg || (G.hist.length ? '' : 'ゲームと違う時は、盤面・温度・集中力を押して直す');
+    el.innerHTML = hint ? '<div class="rec-empty">' + hint + '</div>' : '';
     return;
   }
   const r = G.rec;
   const tgt = r.sk.hs ? '必殺: 次に叩く技は当たったマスがすべて会心'
             : r.sk.random ? `マス${r.tg.map(i=>i+1).join('・')}のどこかにランダムで4回`
-            : r.tg.length ? r.tg.map(i=>'マス'+(i+1)).join('・') : '温度操作';
+            : r.tg.length ? r.tg.map(i=>'マス'+(i+1)).join('・') : '';
+  const sub = x => [tgt, x].filter(Boolean).join(' / ');
   const cr = r.sk.key ? computeCritRate(r.sk,G.level,G.hammerId,G.star,G.trait,G.temp) : 0;
   // 点灯マスを含む手は、そのマスだけ会心率が違う。1つの数字に丸めると誤解を招くので分けて出す
   let critTxt = r.sk.key ? (G.hs === 2 ? ' / 必ず会心(必殺)' : ' / 会心'+(cr*100).toFixed(0)+'%') : '';
@@ -382,7 +372,7 @@ function renderRec(){
     const warnN = leftN < 40 ? ' style="color:var(--ember)"' : '';
     el.innerHTML = `<div class="rec-main">
       <div class="rec-skill">${r.sk.name} ×${n}</div>
-      <div class="rec-sub">${tgt} / 消費${cost}(${steps.map(x => x.cost).join('・')})</div>
+      <div class="rec-sub">${sub(`消費${cost}(${steps.map(x => x.cost).join('・')})`)}</div>
       <div class="rec-sub">実行後 → <b${warnN}>集中力 ${leftN}</b> / ${steps[n-1].tempAfter}℃</div>
     </div>`;
     return;
@@ -391,22 +381,22 @@ function renderRec(){
   const warn = leftF < 40 ? ' style="color:var(--ember)"' : '';
   el.innerHTML = `<div class="rec-main">
       <div class="rec-skill">${r.sk.name}</div>
-      <div class="rec-sub">${tgt} / 消費${r.c}${critTxt}</div>
+      <div class="rec-sub">${sub(`消費${r.c}${critTxt}`)}</div>
       <div class="rec-sub">実行後 → <b${warn}>集中力 ${leftF}</b> / ${r.nt}℃</div>${modoriLine()}${redoLine(r)}
     </div>`;
   // 1手ずつ進める時は下の主ボタン(打った)、まとめて打った時は手順の「ここまで打った」を使う。
 }
 
 function renderDetail(){
-  const el = document.getElementById('detail');
-  if(!G.rec && !G.hist.length){ el.textContent='計算すると、推奨手に続く手順がここに出ます'; return; }
+  const el = document.getElementById('detail'), acc = document.getElementById('planAcc');
+  // 手順が無い時(計算前・入力の後)は、見出しだけ残っても意味が無いので欄ごと隠す
+  if(acc) acc.style.display = G.plan.length ? '' : 'none';
+  if(!G.plan.length){ el.innerHTML = ''; return; }
   let h = '';
   // 打った手の履歴は出さない。取り消しは「直前の反映を取り消す」で足りる。
   if(G.plan.length){
-    // 2手目以降は、1手目の結果(ロール・会心・戻り・点灯)で変わる。手順を鵜呑みにしないよう常に添える(利用者の指示)
-    h += '<div class="plan-note">※あくまでも目安です。この先の手順は変わり得ます。</div>';
-    h += '<div style="color:var(--dim);font-size:11px;margin-bottom:6px">'
-       + '何手かまとめて打った時は、打ったところの「ここまで打った」を押してください</div>';
+    // 2手目以降は1手目の結果で変わるが、見出しの「(目安)」で足りるので、決まり文句は出さない(利用者の指示。
+    // 前は「※あくまでも目安です」と「ここまで打った」の使い方を常に添えていた)
     let f = G.focus;
     // 理想値が絞れるのは「会心が理想値ちょうどで止まりうる位置」で叩いた時だけ。
     // 会心で最大まで伸ばしても成功ゾーンに届かない位置なら、結果は理想値と無関係に
@@ -448,9 +438,9 @@ function renderDetail(){
                  + ((i === 0 ? !!modoriHint() : modoriCanAt(G.plan, i)) ? ' <b class="mk-weak">↩ このあと戻り</b>' : '');
       const cls  = (st.mk ? ' on-'+st.mk.k : '') + (i===0?' first':'');
       const tg   = st.name === 'みだれ打ち' ? 'ランダムで4回'
-                 : st.tg.length ? st.tg.map(x=>'マス'+(x+1)).join('・') : '温度操作';
+                 : st.tg.length ? st.tg.map(x=>'マス'+(x+1)).join('・') : '';
       const note = '';
-      const btn  = f < 0 ? ''
+      const btn  = (f < 0 || i === 0) ? ''   // 1手目は主ボタンと同じなので出さない(利用者の指示)
         : `<button class="pexec" onclick="applyExecuted(${i+1})">
              <span class="t">${st.tg.length ? 'ここまで打った' : 'ここまで使った'}</span>
              <span class="s">${st.tempAfter}℃ / 集中${f}</span>
@@ -462,13 +452,18 @@ function renderDetail(){
           <span class="n">${i+1}</span>
           <div class="pinfo">
             <div class="pname">${st.name}${mark}</div>
-            <div class="ptg">${tg}</div>
+            ${tg ? `<div class="ptg">${tg}</div>` : ''}
           </div>${btn}
         </div>`;
     }).join('') + '</div>';
-    h += traitNote();
   }
-  el.innerHTML = h || '<span style="color:var(--dim)">入力した結果から、推奨手を計算してください</span>';
+  el.innerHTML = h;
+}
+
+// ゲージの色の見方を出す・隠す
+function toggleLegend(){
+  const l = document.getElementById('legend'), b = document.getElementById('lgBtn');
+  l.hidden = !l.hidden; b.setAttribute('aria-expanded', String(!l.hidden)); b.classList.toggle('on', !l.hidden);
 }
 
 function renderAll(){ renderHeader(); renderBoard(); renderSkills(); renderRec();
@@ -486,6 +481,7 @@ function syncCalcButton(){
   // (クラス名は .main だと PC 版の2列レイアウトの .main と衝突するので btn- を付ける)
   btn.innerHTML = '<span class="btn-main">' + a.label + '</span>' + (a.sub ? '<span class="btn-sub">' + a.sub + '</span>' : '');
   btn.classList.toggle('done-step', a.kind === 'exec');
+  btn.classList.toggle('wait', a.kind === 'lit');
   // 取り消しは、直前の「打った」を戻せる時だけ主ボタンの左に出す
   const ub = document.getElementById('undoBtn');
   if(ub) ub.style.display = G.undoSnap ? '' : 'none';
@@ -700,8 +696,9 @@ async function doCalc(){
   // 叩いたマスの数値が未入力のまま計算すると、打つ前の値で次の手を決めてしまう
   if(G.pending.length){ renderAll(); return; }
   // 点灯マスが未指定のまま計算すると、威力2倍も会心率+400%も乗らない別物の手が出る
+  // 何をすればよいかは主ボタンに「光ったマスをタップしてください」と出る(推奨の欄には同じ文を出さない。利用者の指示)
   if(needLitPick()){
-    G.msg = '光ったマスをタップしてから計算してください';
+    G.msg = null;
     renderAll();
     return;
   }
@@ -855,12 +852,10 @@ function pickValue(idx, val, wasCrit, red){
 function openPad(kind, idx){
   padTarget=kind; padIdx=idx; padBuf=''; padOp=null;
   let title='';
+  const cand = (kind === 'mass') ? candidateValues(idx) : null;
   if(kind==='mass'){
-    const m=G.masses[idx];
-    const ob = G.obs && G.obs[idx];
-    // 何の結果を入れているのかが分かるよう、使った技と残りのマス数も出す
-    const left = G.pending.includes(idx) && G.pending.length > 1 ? ` ・ 残り${G.pending.length}マス` : '';
-    title = `マス${idx+1}` + (ob && ob.name ? ` ・ ${ob.name}` : '') + ` ・ ゾーン ${m.zoneLow}〜${m.zoneHigh}` + left;
+    // 見出しはマスの番号だけ(利用者の指示)。戻りの後の値を入れる時は、入れる値を間違えないようにその旨を添える
+    title = `マス${idx+1}` + (cand && cand.modori ? '(戻りの後の値)' : '');
   } else if(kind==='temp'){
     title='温度(℃)';
   } else {
@@ -869,7 +864,6 @@ function openPad(kind, idx){
   document.getElementById('padTitle').textContent=title;
   const box = document.getElementById('padCand');
   const keys = document.getElementById('padKeys');
-  const cand = (kind === 'mass') ? candidateValues(idx) : null;
   if(box){
     if(kind === 'temp'){
       box.innerHTML = tempCandHtml();
@@ -879,8 +873,7 @@ function openPad(kind, idx){
       const btn = (v,g) => `<button class="cand${g.crit ? ' crit' : ''}${g.red ? ' red' : ''}"`
         + ` onclick="pickValue(${idx},${v},${g.crit},${g.red})">${v}</button>`;
       box.innerHTML =
-        `<div class="cand-q">マス${idx+1}はいくつになりましたか${cand.modori ? '(戻りの後の値)' : ''}</div>`
-      + cand.groups.map(g => `<div class="cand-grp"><span class="cand-h ${g.cls}">${g.label}</span>`
+        cand.groups.map(g => `<div class="cand-grp"><span class="cand-h ${g.cls}">${g.label}</span>`
           + `<div class="cand-row">${g.vals.map(v => btn(v, g)).join('')}</div></div>`).join('')
       + `<button class="cand-more" onclick="showKeys()">一覧に無い値を自分で入力する</button>`;
       box.style.display = 'block';
@@ -905,8 +898,7 @@ function tempCandHtml(){
   const cur = G.temp;
   const top = Math.max(2200, Math.ceil((cur + 300) / 50) * 50);
   const vals = []; for(let v = 0; v <= top; v += 50) vals.push(v);
-  return `<div class="cand-q">今の温度はいくつですか</div>`
-    + `<div class="cand-row temp">${vals.map(v =>
+  return `<div class="cand-row temp">${vals.map(v =>
         `<button class="cand${v === cur ? ' cur' : ''}" onclick="pickTemp(${v})">${v}</button>`).join('')}</div>`
     + `<button class="cand-more" onclick="showKeys()">一覧に無い値を自分で入力する</button>`;
 }
@@ -1275,7 +1267,7 @@ function renderPicker(){
   document.getElementById('pkCrumbs').innerHTML = crumbs.join('<span class="pk-sep">▶</span>');
   let h = '';
   if(!PICK.job){
-    h = '<div class="pk-q">職人を選んでください</div><div class="pk-grid jobs">';
+    h = '<div class="pk-grid jobs">';
     for(const [job, grps] of PICK_TREE){
       let n = 0; for(const ks of grps.values()) n += ks.length;
       const on = G.preset !== 'custom' && cur && cur.job === job;
@@ -1284,7 +1276,7 @@ function renderPicker(){
     h += '</div>';
     h += `<button class="pk-custom${G.preset === 'custom' ? ' cur' : ''}" data-key="custom">手動設定(ゾーンを自分で入れる)</button>`;
   }else if(!PICK.grp){
-    h = '<div class="pk-q">作りたい種類を選んでください</div><div class="pk-grid">';
+    h = '<div class="pk-grid">';
     for(const [grp, ks] of PICK_TREE.get(PICK.job)){
       const on = G.preset !== 'custom' && cur && cur.job === PICK.job && cur.grp === grp;
       h += `<button class="pk-btn${on ? ' cur' : ''}" data-grp="${esc(grp)}">${esc(grp)}<small>${ks.length}件</small></button>`;
@@ -1292,7 +1284,7 @@ function renderPicker(){
     h += '</div>';
   }else{
     const ks = PICK_TREE.get(PICK.job).get(PICK.grp);
-    h = '<div class="pk-q">商材を選んでください</div><div class="pk-list">';
+    h = '<div class="pk-list">';
     for(const k of ks){
       const p = PRESETS[k];
       const rate = typeof p.rate === 'number' ? `<span class="pk-rate">約${p.rate}%</span>` : '<span class="pk-rate pending">検証中</span>';
@@ -1300,10 +1292,10 @@ function renderPicker(){
          + `<span class="pk-name">${esc(p.name)}</span>${rate}<span class="pk-lv">Lv${p.craft}</span></button>`;
     }
     h += '</div>';
-    if(ks.some(k => typeof PRESETS[k].rate === 'number'))
-      h += '<div class="pk-note">約◯%は大成功率の目安 ※職人Lv80、光★3の場合</div>';
-    if(ks.some(k => typeof PRESETS[k].rate !== 'number'))
-      h += '<div class="pk-note">検証中は、大成功率の目安をまだ測っていない商材</div>';
+    const notes = [];
+    if(ks.some(k => typeof PRESETS[k].rate === 'number')) notes.push('約◯%=大成功率の目安(Lv80・光★3)');
+    if(ks.some(k => typeof PRESETS[k].rate !== 'number')) notes.push('検証中=まだ測っていない');
+    if(notes.length) h += `<div class="pk-note">${notes.join(' / ')}</div>`;
   }
   document.getElementById('pkBody').innerHTML = h;
 }
