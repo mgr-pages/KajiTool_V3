@@ -71,9 +71,15 @@ input,select,button{font-family:inherit; -webkit-appearance:none; appearance:non
 .cand:active{background:var(--ember); color:#fbf3e0;}
 .cand.crit{border-color:rgba(196,26,143,.5); color:var(--pink);}
 .cand.crit:active{background:var(--pink); color:#fbf3e0;}
-/* 温度の一覧: 1行4つ(行の先頭が200℃の倍数)。数が多いのでマスの候補より詰める */
-.cand-row.temp{grid-template-columns:repeat(4,1fr); margin-bottom:10px;}
-.cand-row.temp .cand{padding:9px 2px; font-size:15px;}
+/* 温度の一覧: 一度に5つ見えるスクロール式(利用者の指示)。上下の端をぼかして続きがあることを示す */
+.tw{position:relative; height:240px; overflow-y:auto; padding:96px 0; box-sizing:border-box; margin-bottom:10px;
+  scroll-snap-type:y proximity; overscroll-behavior:contain; -webkit-overflow-scrolling:touch;
+  -webkit-mask-image:linear-gradient(transparent, #000 28%, #000 72%, transparent);
+  mask-image:linear-gradient(transparent, #000 28%, #000 72%, transparent);}
+.tw-item{display:block; width:100%; height:48px; scroll-snap-align:center; border:none; background:none; padding:0;
+  font-size:22px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; cursor:pointer;}
+.tw-item:active{background:var(--sunk);}
+.tw-item.cur{color:var(--ember); font-weight:800;}
 .cand.cur{border-color:var(--ember); color:var(--ember); box-shadow:inset 0 0 0 1px var(--ember);}
 /* 結果の選択(記録用) */
 .oc-row{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;}
@@ -489,14 +495,14 @@ table.sk .cst{text-align:right; font-weight:700;}
 }
 /* 柄はページ全体の地(html)に敷く。body に敷いて background-attachment:fixed にすると、
    iPhone の Safari などで柄が出ないことがあるため、固定もしない(ページと一緒に流れる)。 */
-:root{--css-ver:"14e85315";}
+:root{--css-ver:"65a38b44";}
 .ver{margin-top:12px; font-size:10.5px; color:var(--dim); text-align:right;}
 .ver b{color:var(--red);}   /* 表示中の見た目のファイルの版(tools/stamp.py が付け直す) */
 html{
   /* 地は全面同じ色。上部を明るくするグラデーションは、ページの高さで途切れて
      下の方だけ色が変わって見えたためやめた。 */
   background:
-    url("bg-motif.svg?v=14e85315") 0 0 / 900px 900px repeat,
+    url("bg-motif.svg?v=65a38b44") 0 0 / 900px 900px repeat,
     var(--bg);
 }
 body{background:transparent;}

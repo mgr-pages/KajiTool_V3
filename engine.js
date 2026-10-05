@@ -492,6 +492,22 @@ const ITEM_PARAM_OF = {
 const ITEM_PARAM_ADD = {
   ガナドールバンド: { heat: 4 },
   セレーネアックス: { heat: 0 },
+  // 影星の短刀(短剣・2マス・許容誤差0): 2マス残りの総当たり(ldp2)。もう1マスに残す集中力は少なめ(ldp2R 0.1・ldp2C 25)。
+  //   先読み無し・同じ局どうし: 種66・1000局 26.8% → 30.3%(片方だけ 169対204)/ 種77・2000局 28.5% → 31.4%(352対410、z=2.10)。
+  //   残す集中力を多くすると(ldp2R 0.2〜0.3・ldp2C 15〜25)−5〜−9pt と悪くなる(仕上げの集中力を削る)。
+  影星の短刀: { ldp2: 1, ldp2B: 0, ldp2R: 0.1, ldp2C: 25 },
+};
+// 商材ごとの先読みの設定(2026-10-05、一番大成功率の低い商材の見直し)。
+//   影星の短刀・ヴェーレダガー(短剣・2マス・許容誤差0)は、先読みにかからない決め打ちの手が1局に約5回ある。
+//   その局面で候補ごとに試し打ちを2560回ずつ記録し(選ぶのに1280回、良し悪しを測るのに別の1280回)、決め打ちの手も先読みで
+//   比べる(early)と、決め打ちの手より 影星の短刀 +1.74pt/局面(95%の範囲 +1.41〜+2.07、120局面)・
+//   ヴェーレダガー +1.40pt/局面(+1.06〜+1.73、120局面)良い手を選んだ。
+//   ネビュラスブレード(両手剣・8マス・たたき変化)も決め打ちが1局に約3.9回あり、+4.87pt/局面(+3.29〜+6.46、80局面)。
+//   スコーピオサイスは決め打ちが1局に0.3回しか無く、+1.57pt/局面(−0.08〜+3.22、10局面)とはっきりしないので入れていない。
+const ITEM_MC = {
+  影星の短刀: { early: true },
+  ヴェーレダガー: { early: true },
+  ネビュラスブレード: { early: true },
 };
 (function(){
   const TH = [0, 0, 0, 2, 3, 5, 7, 9, 10];
@@ -510,6 +526,7 @@ const ITEM_PARAM_ADD = {
       PRESETS[key] = { name, trait, threshold: tol, off: off.sort((a, b) => a - b), zones };
       if(ITEM_PARAM_OF[name]) PRESETS[key].params = Object.assign({}, ITEM_PARAMS[ITEM_PARAM_OF[name]]);
       if(ITEM_PARAM_ADD[name]) PRESETS[key].params = Object.assign({}, PRESETS[key].params || {}, ITEM_PARAM_ADD[name]);
+      if(ITEM_MC[name]) PRESETS[key].mc = Object.assign({}, ITEM_MC[name]);
     }
     Object.assign(PRESETS[key], { job, grp, craft });
     PRESET_ORDER.push(key);
