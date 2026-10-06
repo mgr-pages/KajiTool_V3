@@ -49,9 +49,9 @@
         "unreached": 0,
         "over": 0,
         "avgErr": 7.5,
-        "avgMoves": 23,
-        "avgFocusLeft": 12.5,
-        "fingerprint": "cbc766f3"
+        "avgMoves": 23.5,
+        "avgFocusLeft": 6,
+        "fingerprint": "5f93e4a8"
       },
       "greedy": {
         "games": 300,
@@ -158,10 +158,10 @@
         "great": 100,
         "unreached": 0,
         "over": 0,
-        "avgErr": 2,
-        "avgMoves": 17.5,
-        "avgFocusLeft": 47.5,
-        "fingerprint": "61d51563"
+        "avgErr": 0.5,
+        "avgMoves": 16,
+        "avgFocusLeft": 42,
+        "fingerprint": "69f668b0"
       },
       "greedy": {
         "games": 300,
