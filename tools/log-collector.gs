@@ -9,7 +9,8 @@
         実行するユーザー: 自分 / アクセスできるユーザー: 全員
      5. 表示された URL(…/exec)を gamelog.js の GLOG_ENDPOINT に入れる
    1局ごとに「記録」シートへ1行を足す。手順の細かい中身は最後の列に JSON で入れる。
-   doPost はアプリから送られた時に動く。エディタから doPost を直接実行すると、送られた中身が無いので止まる。
+   doPost はアプリから送られた時に動く。エディタから doPost を直接実行しても、送られた中身が無いので何も書かない(ログに知らせを出す)。
+   名前が _ で終わる関数は内部用(エディタの[実行]の一覧に出ない)。エディタから実行するのは testPost と updateCritSheet。
    会心率の集計(下の「会心率の集計」):
      ・スプレッドシートのメニュー [鍛冶アドバイザー] → [会心の集計を更新] で「会心の集計」シートを書き直す。
      ・同じ URL を GET で開くと、集計の数字だけを JSON で返す(端末の番号・手順などは返さない)。
@@ -24,6 +25,11 @@ const HEAD = ['受け取った日時', '記録の番号', '端末の番号(匿�
               'ブラウザ', 'OS'];
 
 function doPost(e){
+  // エディタの[実行]で doPost を選んで押すと、送られた中身(e)が無い。止まらずに、試す時は testPost を使うよう知らせる
+  if(!e || !e.postData || !e.postData.contents){
+    console.log('doPost はアプリから送られた時に動きます。エディタから試す時は testPost を実行してください。');
+    return ContentService.createTextOutput('no data');
+  }
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try{
@@ -77,14 +83,15 @@ const CRIT_SKIP = ['火力上げ', '冷やし込み', 'みだれ打ち', 'ヘパ
 const CRIT_HAMMER = { copper:[1.0,1.1,1.2,2.0], iron:[1.5,1.6,1.7,2.5], silver:[2.0,2.1,2.2,3.0],
                       platinum:[2.5,2.6,2.7,3.5], super:[3.0,3.1,3.2,4.0], miracle:[3.3,3.4,3.5,4.3],
                       light:[3.6,3.7,3.8,4.6] };
+const CRIT_TRAIT_NAME = { kaishin:'威力会心率上昇', shuchu:'集中力変化', tataki:'たたき変化', modori:'戻り' };
 const CRIT_HAMMER_NAME = { copper:'銅', iron:'鉄', silver:'銀', platinum:'プラチナ', super:'超', miracle:'奇跡', light:'光' };
 // 装備の名前(集計を分ける単位)。職人スキルの会心アップは Lv30 で上限なので、Lv30 以上はまとめる
-function critEquip(level, hammer, star){
+function critEquip_(level, hammer, star){
   const lv = Number(level) || 0;
   return (CRIT_HAMMER_NAME[hammer] || String(hammer)) + '★' + star + (lv >= 30 ? '' : ' Lv' + lv);
 }
 // 上乗せの無い会心率(割合)。職人スキルの会心アップ + コツをつかんでいる(+1.0%) + ハンマー(engine.js と同じ)
-function critBase(level, hammer, star){
+function critBase_(level, hammer, star){
   const lv = Number(level) || 0;
   const passive = (lv >= 10 ? 0.1 : 0) + (lv >= 20 ? 0.2 : 0) + (lv >= 30 ? 0.3 : 0);
   const h = CRIT_HAMMER[hammer]; const s = Number(star);
@@ -92,8 +99,8 @@ function critBase(level, hammer, star){
 }
 // 1局の手順から打撃を取り出し、add(打撃) に渡す。
 // 打撃 = { sit: 状況, cls: 技の種類, crit: 会心か, base: 基礎の会心率, cr: 見込みの会心率, both: 会心でも会心でなくても出る値か(新しい版だけ) }
-function critHitsOf(trait, level, hammer, star, steps, add){
-  const base = critBase(level, hammer, star);
+function critHitsOf_(trait, level, hammer, star, steps, add){
+  const base = critBase_(level, hammer, star);
   let cur = null, pend = [], hsOn = false;
   const flush = () => { pend.forEach(add); pend = []; };
   const sitOf = (t, lit) => (trait === 'kaishin' && lit) ? '点灯' :
@@ -140,7 +147,7 @@ function critHitsOf(trait, level, hammer, star, steps, add){
   flush();
 }
 // 記録の行(シートの値)から集計を作る。rows は「記録」シートの2行目以降
-function critAggregate(rows){
+function critAggregate_(rows){
   const col = n => HEAD.indexOf(n);
   const iTrait = col('地金特性'), iLv = col('職人Lv'), iHam = col('ハンマー'), iStar = col('できのよさ'),
         iRes = col('結果'), iJson = col('手順(JSON)');
@@ -151,9 +158,9 @@ function critAggregate(rows){
     let d;
     try{ d = JSON.parse(r[iJson]); }catch(e){ bad++; continue; }
     const trait = r[iTrait];
-    const equip = critEquip(r[iLv], r[iHam], r[iStar]);
+    const equip = critEquip_(r[iLv], r[iHam], r[iStar]);
     records++; byTrait[trait] = (byTrait[trait] || 0) + 1; byEquip[equip] = (byEquip[equip] || 0) + 1;
-    critHitsOf(trait, r[iLv], r[iHam], r[iStar], d && d.steps, h => {
+    critHitsOf_(trait, r[iLv], r[iHam], r[iStar], d && d.steps, h => {
       const k = equip + '|' + trait + '|' + h.sit + '|' + h.cls;
       const g = groups[k] || (groups[k] = { equip, base: h.base, trait, sit: h.sit, cls: h.cls, n: 0, crit: 0, sumBase: 0, sumCr: 0,
                                             sumVar: 0, nNew: 0, nBoth: 0, critBoth: 0 });
@@ -170,14 +177,14 @@ function critAggregate(rows){
 }
 // 実測の会心の回数が、エンジンの見込みの会心率どおりに出た場合の誤差の中か。
 // z = (会心の回数 − 見込みの会心率の合計) ÷ √(見込みの会心率×(1−見込み) の合計)。|z| < 2 なら誤差の範囲(約95%)
-function critCheck(g){
+function critCheck_(g){
   if(!g.n || !(g.sumVar > 0)) return { z: '', verdict: '' };
   const z = (g.crit - g.sumCr) / Math.sqrt(g.sumVar);
   const verdict = g.n < 30 ? '少ない' : Math.abs(z) < 2 ? '誤差の範囲' : (z > 0 ? '多い' : '少なめ') + '(ずれ)';
   return { z, verdict };
 }
 // 実測の会心率の95%の範囲(ウィルソンの方法)
-function critRange(crit, n){
+function critRange_(crit, n){
   if(!n) return ['', ''];
   const p = crit / n, z = 1.96, d = 1 + z * z / n, c = (p + z * z / (2 * n)) / d, h = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d;
   return [Math.max(0, c - h), Math.min(1, c + h)];
@@ -186,7 +193,7 @@ function critSummary_(){
   const ss = SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
   const sh = ss.getSheetByName(SHEET);
   const rows = sh && sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, HEAD.length).getValues() : [];
-  return critAggregate(rows);
+  return critAggregate_(rows);
 }
 // メニューから: 「会心の集計」シートを書き直す
 function updateCritSheet(){
@@ -197,8 +204,8 @@ function updateCritSheet(){
   const head = ['装備(ハンマー★できのよさ)', '基礎の会心率', '地金特性', '状況', '技', '叩いた回数', '会心の回数',
                 '会心率(実測)', '実測の95%の範囲(下)', '実測の95%の範囲(上)', '会心率(エンジンの見込み)',
                 '見込みとの差のz', '判定', '基礎に対する倍率(実測)', '基礎に対する倍率(エンジン)', '会心でも会心でなくても出る値の回数'];
-  const body = s.groups.map(g => { const ck = critCheck(g), rg = critRange(g.crit, g.n);
-    return [g.equip, g.base, g.trait, g.sit, g.cls, g.n, g.crit, g.n ? g.crit / g.n : '', rg[0], rg[1], g.n ? g.sumCr / g.n : '',
+  const body = s.groups.map(g => { const ck = critCheck_(g), rg = critRange_(g.crit, g.n);
+    return [g.equip, g.base, CRIT_TRAIT_NAME[g.trait] || g.trait, g.sit, g.cls, g.n, g.crit, g.n ? g.crit / g.n : '', rg[0], rg[1], g.n ? g.sumCr / g.n : '',
             ck.z, ck.verdict, g.sumBase ? g.crit / g.sumBase : '', g.sumBase ? g.sumCr / g.sumBase : '', g.nBoth]; });
   sh.getRange(1, 1, 1, head.length).setValues([head]);
   if(body.length){
