@@ -59,8 +59,10 @@ function testPost(){
    エンジンの会心率の式(engine.js の computeCritRate)のうち、確かめられていない上乗せ
    (威力会心率上昇の点灯マス +400%(利用者の情報)、ねらい打ち +600%、集中力変化の会心ターン +400%)を、
    実際の対局の記録で確かめるための集計。
-   1回の打撃ごとに「地金特性 × 状況(点灯マス / 会心ターン / ふつう) × 技(ねらい系 / それ以外)」に分けて、
-   叩いた回数・会心の回数・基礎の会心率の合計(上乗せの無い会心率)・エンジンの見込みの会心率の合計を数える。
+   1回の打撃ごとに「装備(ハンマー・できのよさ・職人Lv) × 地金特性 × 状況(点灯マス / 会心ターン / ふつう) × 技(ねらい系 / それ以外)」に
+   分けて、叩いた回数・会心の回数・基礎の会心率の合計(上乗せの無い会心率)・エンジンの見込みの会心率の合計を数える。
+   装備で分けるのは、ハンマーとできのよさで基礎の会心率が変わるため。混ぜると、ずれがハンマーの会心率の値から来たのか、
+   上乗せから来たのかを見分けられない(利用者の指摘。光★2 の記録が混ざっていた)。
    基礎の会心率の合計で会心の回数を割ると、基礎に対する倍率(実測)になる。
    数えない打撃: 開始直後の1手(特性が乗らない)、必殺の効果中(必ず会心)、みだれ打ち(どのマスに当たったか分からない)、
    まとめて実行して同じマスを2回以上叩いた打撃(どちらで会心が出たか分からない)、戻りで減った後の値、取り消した手。
@@ -75,6 +77,12 @@ const CRIT_SKIP = ['火力上げ', '冷やし込み', 'みだれ打ち', 'ヘパ
 const CRIT_HAMMER = { copper:[1.0,1.1,1.2,2.0], iron:[1.5,1.6,1.7,2.5], silver:[2.0,2.1,2.2,3.0],
                       platinum:[2.5,2.6,2.7,3.5], super:[3.0,3.1,3.2,4.0], miracle:[3.3,3.4,3.5,4.3],
                       light:[3.6,3.7,3.8,4.6] };
+const CRIT_HAMMER_NAME = { copper:'銅', iron:'鉄', silver:'銀', platinum:'プラチナ', super:'超', miracle:'奇跡', light:'光' };
+// 装備の名前(集計を分ける単位)。職人スキルの会心アップは Lv30 で上限なので、Lv30 以上はまとめる
+function critEquip(level, hammer, star){
+  const lv = Number(level) || 0;
+  return (CRIT_HAMMER_NAME[hammer] || String(hammer)) + '★' + star + (lv >= 30 ? '' : ' Lv' + lv);
+}
 // 上乗せの無い会心率(割合)。職人スキルの会心アップ + コツをつかんでいる(+1.0%) + ハンマー(engine.js と同じ)
 function critBase(level, hammer, star){
   const lv = Number(level) || 0;
@@ -136,25 +144,43 @@ function critAggregate(rows){
   const col = n => HEAD.indexOf(n);
   const iTrait = col('地金特性'), iLv = col('職人Lv'), iHam = col('ハンマー'), iStar = col('できのよさ'),
         iRes = col('結果'), iJson = col('手順(JSON)');
-  const groups = {}, byTrait = {};
+  const groups = {}, byTrait = {}, byEquip = {};
   let records = 0, bad = 0, hits = 0;
   for(const r of rows){
     if(r[iRes] === '試験') continue;
     let d;
     try{ d = JSON.parse(r[iJson]); }catch(e){ bad++; continue; }
     const trait = r[iTrait];
-    records++; byTrait[trait] = (byTrait[trait] || 0) + 1;
+    const equip = critEquip(r[iLv], r[iHam], r[iStar]);
+    records++; byTrait[trait] = (byTrait[trait] || 0) + 1; byEquip[equip] = (byEquip[equip] || 0) + 1;
     critHitsOf(trait, r[iLv], r[iHam], r[iStar], d && d.steps, h => {
-      const k = trait + '|' + h.sit + '|' + h.cls;
-      const g = groups[k] || (groups[k] = { trait, sit: h.sit, cls: h.cls, n: 0, crit: 0, sumBase: 0, sumCr: 0,
-                                            nNew: 0, nBoth: 0, critBoth: 0 });
+      const k = equip + '|' + trait + '|' + h.sit + '|' + h.cls;
+      const g = groups[k] || (groups[k] = { equip, base: h.base, trait, sit: h.sit, cls: h.cls, n: 0, crit: 0, sumBase: 0, sumCr: 0,
+                                            sumVar: 0, nNew: 0, nBoth: 0, critBoth: 0 });
       g.n++; hits++; if(h.crit) g.crit++;
-      g.sumBase += h.base; g.sumCr += h.cr;
+      g.sumBase += h.base; g.sumCr += h.cr; g.sumVar += h.cr * (1 - h.cr);
       if(h.isNew){ g.nNew++; if(h.both){ g.nBoth++; if(h.crit) g.critBoth++; } }
     });
   }
-  const list = Object.keys(groups).sort().map(k => groups[k]);
-  return { generated: new Date().toISOString(), records, recordsByTrait: byTrait, badRows: bad, hits, groups: list };
+  // 局の多い装備から並べる(同じ装備の中は 地金特性・状況・技 の順)
+  const list = Object.keys(groups).map(k => groups[k]).sort((a, b) =>
+    (byEquip[b.equip] - byEquip[a.equip]) || (a.equip < b.equip ? -1 : a.equip > b.equip ? 1 : 0) ||
+    ((a.trait + a.sit + a.cls) < (b.trait + b.sit + b.cls) ? -1 : (a.trait + a.sit + a.cls) > (b.trait + b.sit + b.cls) ? 1 : 0));
+  return { generated: new Date().toISOString(), records, recordsByTrait: byTrait, recordsByEquip: byEquip, badRows: bad, hits, groups: list };
+}
+// 実測の会心の回数が、エンジンの見込みの会心率どおりに出た場合の誤差の中か。
+// z = (会心の回数 − 見込みの会心率の合計) ÷ √(見込みの会心率×(1−見込み) の合計)。|z| < 2 なら誤差の範囲(約95%)
+function critCheck(g){
+  if(!g.n || !(g.sumVar > 0)) return { z: '', verdict: '' };
+  const z = (g.crit - g.sumCr) / Math.sqrt(g.sumVar);
+  const verdict = g.n < 30 ? '少ない' : Math.abs(z) < 2 ? '誤差の範囲' : (z > 0 ? '多い' : '少なめ') + '(ずれ)';
+  return { z, verdict };
+}
+// 実測の会心率の95%の範囲(ウィルソンの方法)
+function critRange(crit, n){
+  if(!n) return ['', ''];
+  const p = crit / n, z = 1.96, d = 1 + z * z / n, c = (p + z * z / (2 * n)) / d, h = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d;
+  return [Math.max(0, c - h), Math.min(1, c + h)];
 }
 function critSummary_(){
   const ss = SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
@@ -168,14 +194,25 @@ function updateCritSheet(){
   const ss = SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
   const sh = ss.getSheetByName(CRIT_SHEET) || ss.insertSheet(CRIT_SHEET);
   sh.clear();
-  const head = ['地金特性', '状況', '技', '叩いた回数', '会心の回数', '会心率(実測)', '会心率(エンジンの見込み)',
-                '基礎に対する倍率(実測)', '基礎に対する倍率(エンジン)', '会心でも会心でなくても出る値の回数'];
-  const body = s.groups.map(g => [g.trait, g.sit, g.cls, g.n, g.crit, g.n ? g.crit / g.n : '', g.n ? g.sumCr / g.n : '',
-                                  g.sumBase ? g.crit / g.sumBase : '', g.sumBase ? g.sumCr / g.sumBase : '', g.nBoth]);
+  const head = ['装備(ハンマー★できのよさ)', '基礎の会心率', '地金特性', '状況', '技', '叩いた回数', '会心の回数',
+                '会心率(実測)', '実測の95%の範囲(下)', '実測の95%の範囲(上)', '会心率(エンジンの見込み)',
+                '見込みとの差のz', '判定', '基礎に対する倍率(実測)', '基礎に対する倍率(エンジン)', '会心でも会心でなくても出る値の回数'];
+  const body = s.groups.map(g => { const ck = critCheck(g), rg = critRange(g.crit, g.n);
+    return [g.equip, g.base, g.trait, g.sit, g.cls, g.n, g.crit, g.n ? g.crit / g.n : '', rg[0], rg[1], g.n ? g.sumCr / g.n : '',
+            ck.z, ck.verdict, g.sumBase ? g.crit / g.sumBase : '', g.sumBase ? g.sumCr / g.sumBase : '', g.nBoth]; });
   sh.getRange(1, 1, 1, head.length).setValues([head]);
-  if(body.length) sh.getRange(2, 1, body.length, head.length).setValues(body);
+  if(body.length){
+    sh.getRange(2, 1, body.length, head.length).setValues(body);
+    sh.getRange(2, 2, body.length, 1).setNumberFormat('0.0%');
+    sh.getRange(2, 8, body.length, 4).setNumberFormat('0.0%');
+    sh.getRange(2, 12, body.length, 1).setNumberFormat('0.00');
+    sh.getRange(2, 14, body.length, 2).setNumberFormat('0.00');
+  }
+  const eq = Object.keys(s.recordsByEquip).sort((a, b) => s.recordsByEquip[b] - s.recordsByEquip[a]);
   sh.getRange(body.length + 3, 1, 1, 2).setValues([['集計した対局', s.records]]);
-  sh.getRange(body.length + 4, 1, 1, 2).setValues([['更新した日時', new Date()]]);
+  sh.getRange(body.length + 4, 1, 1, 2).setValues([['装備ごとの対局', eq.map(k => k + ' ' + s.recordsByEquip[k]).join(' / ')]]);
+  sh.getRange(body.length + 5, 1, 1, 2).setValues([['判定の見方', '見込みとの差のzが±2の中なら、エンジンの会心率と誤差の範囲で一致(叩いた回数30未満は「少ない」)']]);
+  sh.getRange(body.length + 6, 1, 1, 2).setValues([['更新した日時', new Date()]]);
   sh.setFrozenRows(1);
 }
 // GET: 集計の数字だけを返す(10分ごとに作り直す)
