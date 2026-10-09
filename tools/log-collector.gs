@@ -163,10 +163,16 @@ function critAggregate_(rows){
     critHitsOf_(trait, r[iLv], r[iHam], r[iStar], d && d.steps, h => {
       const k = equip + '|' + trait + '|' + h.sit + '|' + h.cls;
       const g = groups[k] || (groups[k] = { equip, base: h.base, trait, sit: h.sit, cls: h.cls, n: 0, crit: 0, sumBase: 0, sumCr: 0,
-                                            sumVar: 0, nNew: 0, nBoth: 0, critBoth: 0 });
-      g.n++; hits++; if(h.crit) g.crit++;
+                                            sumVar: 0, nAll: 0, critAll: 0, nOld: 0, nBoth: 0, critBoth: 0 });
+      g.nAll++; hits++; if(h.crit) g.critAll++;
+      // 判定に使うのは、会心かどうかを値で区別できる打撃だけ(新しい版の記録で both でないもの)。
+      // 実戦の記録(2026-10-09 までの253局)では、どちらとも取れる値(both)は会心でない側に入れられやすかった
+      // (集中力変化・ねらい系: both 117回で 41% 対 見込み 55%、z=-3.1。区別できる値 270回は 52% 対 52%)。
+      // 古い版の記録は both が分からないので、判定には入れない(数だけ控える)。
+      if(!h.isNew){ g.nOld++; return; }
+      if(h.both){ g.nBoth++; if(h.crit) g.critBoth++; return; }
+      g.n++; if(h.crit) g.crit++;
       g.sumBase += h.base; g.sumCr += h.cr; g.sumVar += h.cr * (1 - h.cr);
-      if(h.isNew){ g.nNew++; if(h.both){ g.nBoth++; if(h.crit) g.critBoth++; } }
     });
   }
   // 局の多い装備から並べる(同じ装備の中は 地金特性・状況・技 の順)
@@ -201,12 +207,13 @@ function updateCritSheet(){
   const ss = SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
   const sh = ss.getSheetByName(CRIT_SHEET) || ss.insertSheet(CRIT_SHEET);
   sh.clear();
-  const head = ['装備(ハンマー★できのよさ)', '基礎の会心率', '地金特性', '状況', '技', '叩いた回数', '会心の回数',
+  const head = ['装備(ハンマー★できのよさ)', '基礎の会心率', '地金特性', '状況', '技', '叩いた回数(判定に使う)', '会心の回数',
                 '会心率(実測)', '実測の95%の範囲(下)', '実測の95%の範囲(上)', '会心率(エンジンの見込み)',
-                '見込みとの差のz', '判定', '基礎に対する倍率(実測)', '基礎に対する倍率(エンジン)', '会心でも会心でなくても出る値の回数'];
+                '見込みとの差のz', '判定', '基礎に対する倍率(実測)', '基礎に対する倍率(エンジン)',
+                '除いた: どちらとも取れる値', '除いた: 古い版の記録'];
   const body = s.groups.map(g => { const ck = critCheck_(g), rg = critRange_(g.crit, g.n);
     return [g.equip, g.base, CRIT_TRAIT_NAME[g.trait] || g.trait, g.sit, g.cls, g.n, g.crit, g.n ? g.crit / g.n : '', rg[0], rg[1], g.n ? g.sumCr / g.n : '',
-            ck.z, ck.verdict, g.sumBase ? g.crit / g.sumBase : '', g.sumBase ? g.sumCr / g.sumBase : '', g.nBoth]; });
+            ck.z, ck.verdict, g.sumBase ? g.crit / g.sumBase : '', g.sumBase ? g.sumCr / g.sumBase : '', g.nBoth || 0, g.nOld || 0]; });
   sh.getRange(1, 1, 1, head.length).setValues([head]);
   if(body.length){
     sh.getRange(2, 1, body.length, head.length).setValues(body);
@@ -218,7 +225,8 @@ function updateCritSheet(){
   const eq = Object.keys(s.recordsByEquip).sort((a, b) => s.recordsByEquip[b] - s.recordsByEquip[a]);
   sh.getRange(body.length + 3, 1, 1, 2).setValues([['集計した対局', s.records]]);
   sh.getRange(body.length + 4, 1, 1, 2).setValues([['装備ごとの対局', eq.map(k => k + ' ' + s.recordsByEquip[k]).join(' / ')]]);
-  sh.getRange(body.length + 5, 1, 1, 2).setValues([['判定の見方', '見込みとの差のzが±2の中なら、エンジンの会心率と誤差の範囲で一致(叩いた回数30未満は「少ない」)']]);
+  sh.getRange(body.length + 5, 1, 1, 2).setValues([['判定の見方', '見込みとの差のzが±2の中なら、エンジンの会心率と誤差の範囲で一致(叩いた回数30未満は「少ない」)。'
+    + '判定には、会心かどうかを値で区別できる打撃だけを使う(どちらとも取れる値は会心でない側に入れられやすいため)']]);
   sh.getRange(body.length + 6, 1, 1, 2).setValues([['更新した日時', new Date()]]);
   sh.setFrozenRows(1);
 }
