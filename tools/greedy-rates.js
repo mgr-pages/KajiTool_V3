@@ -45,8 +45,9 @@ function runOne(k){
     if(n < o.games) console.error(`局が足りない ${k}: ${n} / ${o.games}`);
     rows.push([k, n ? Math.round(1000 * g / n) / 10 : null]);
   }
-  // 1行に5商材ずつ。キーは商材の名前(元の9商材は kagayaki などの短い名前)
-  const ent = rows.filter(r => r[1] !== null).map(([k, v]) => `${/^[A-Za-z_]\w*$/.test(k) ? k : `'${k}'`}:${v}`);
+  // 1行に5商材ずつ。キーは商材の名前(元の9商材は kagayaki などの短い名前)。名前のまま書けないキーだけ引用符で囲む
+  const bare = k => { try{ new Function(`({${k}:1})`); return true; }catch(e){ return false; } };
+  const ent = rows.filter(r => r[1] !== null).map(([k, v]) => `${bare(k) ? k : `'${k}'`}:${v}`);
   const lines = []; for(let i = 0; i < ent.length; i += 5) lines.push('  ' + ent.slice(i, i + 5).join(', ') + ',');
   const obj = `const PRESET_GREEDY = {\n${lines.join('\n')}\n};`;
   console.log(obj);
