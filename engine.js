@@ -1486,9 +1486,14 @@ function trapBuild(ms, idx, cfg, GM, kappa, eps, rho){
 }
 function trapMove(ms, f, t, P, cfg){
   if(isStartState() || HS !== 0) return null;
+  // 残りが2マス(ほかのマスはゾーン内)の時だけ。2マスの商材なら打ち始めから
   const idx = [];
-  for(let j = 0; j < ms.length; j++) if(ms[j].zoneHigh > 0) idx.push(j);
-  if(idx.length !== 2 || idx.some(j => ms[j].current >= ms[j].zoneLow)) return null;
+  for(let j = 0; j < ms.length; j++){
+    if(ms[j].zoneHigh <= 0) continue;
+    if(ms[j].current > ms[j].zoneHigh) return null;
+    if(ms[j].current < ms[j].zoneLow) idx.push(j);
+  }
+  if(idx.length !== 2) return null;
   const plan = trapPlan(ms, idx, cfg, P);
   if(!plan) return null;
   const a = ms[idx[0]].zoneLow - ms[idx[0]].current, b = ms[idx[1]].zoneLow - ms[idx[1]].current;
