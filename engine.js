@@ -507,13 +507,31 @@ const ITEM_PARAM_ADD = {
   //   魔衛隊士のかぶと 42.2% → 45.1%(219対278、z=2.65)。
   //   入れていない: コスモスのこて(種55 z=1.87)・レオンソード(−0.37)・天球の大盾(0.87)。69商材の合計では悪くなる商材の方が多い
   //   (z≤−2 が17商材)ので、既定にはしない。
-  聖王のナイフ: { ldp2: 1, ldp2B: 0, ldp2R: 0.1, ldp2C: 25 },
+  聖王のナイフ: { ldp2: 1, ldp2B: 0, ldp2R: 0.1, ldp2C: 25, trap: 1 },   // trap は下の 2026-10-10 の罠
   ゴシックハット: { ldp2: 1, ldp2B: 0, ldp2R: 0.1, ldp2C: 25 },
   超錬金ランプ: { ldp2: 1, ldp2B: 0, ldp2R: 0.1, ldp2C: 25 },
-  奇跡のさいほう針: { ldp2: 1, ldp2B: 0, ldp2R: 0.1, ldp2C: 25 },
-  光のさいほう針: { ldp2: 1, ldp2B: 0, ldp2R: 0.1, ldp2C: 25 },
+  奇跡のさいほう針: { ldp2: 1, ldp2B: 0, ldp2R: 0.1, ldp2C: 40, trap: 1 },   // C40 と trap は下の 2026-10-10 の見直し
+  光のさいほう針: { ldp2: 1, ldp2B: 0, ldp2R: 0.1, ldp2C: 25, trap: 1 },   // trap は下の 2026-10-10 の罠
   ゴシックミトラ: { ldp2: 1, ldp2B: 0, ldp2R: 0.1, ldp2C: 25 },
   魔衛隊士のかぶと: { ldp2: 1, ldp2B: 0, ldp2R: 0.1, ldp2C: 25 },
+  // 2026-10-10: 針(2マス縦・許容誤差0)の見直し。大成功 ≒ 先に仕上げたマスが誤差0 × 後のマスが誤差0 に分けて測った。
+  //   超さいほう針は先のマスの誤差0が 69.7% と弱く(後のマスは 76.4%)、先のマスも ldp2 で仕上げると
+  //   種44・2000局 54.8% → 71.2%(283対611、z=10.97)、選ぶのに使っていない種55・2000局 53.8% → 72.8%(270対650、z=12.53)。
+  //   奇跡のさいほう針は後のマスに入る時の集中力が足りない(+20 で後のマスの誤差0 が 62.2 → 68.0%)ので、残す集中力を
+  //   ldp2C 25 → 40 に増やした: 種44 51.9% → 54.2%(67対114、z=3.49)、種55 51.9% → 55.3%(65対133、z=4.83)。
+  //   入れていない: 光のさいほう針 C40(種44 z=1.61、種55 z=−0.37)・C55(2.51・0.23)、プラチナさいほう針 ldp2(種44 z=1.56)。
+  //   許容誤差0の商材では ldp2B は 0 にする(1 だと仕上げの誤差の枠が負になり、総当たりが一度も働かない)。
+  超さいほう針: { ldp2: 1, ldp2B: 0, ldp2R: 0.1, ldp2C: 25 },
+  // 2026-10-10: 2マス同時の罠へ寄せる計画(trap。trapMove の上の説明)。2マス縦・許容誤差0の9商材に、既定の設定
+  //   (trapK 0.8・trapL 0.0067・trapR 0.65・trapG 160。種44で選んだ)を先読み無し・同じ局どうしで当て(種44・1000局)、
+  //   z≥2 だった商材を、選ぶのに使っていない種55・2000局で確かめ、z≥2 だった4商材に入れた(種55: 前 → 後、片方だけ大成功、z)。
+  //   奇跡のさいほう針 55.3% → 59.3%(438対518、z=2.59)・光のさいほう針 53.0% → 57.5%(390対480、z=3.05)・
+  //   聖王のナイフ 52.9% → 57.5%(388対479、z=3.09)・グラフィアス 45.5% → 49.8%(433対520、z=2.82)。
+  //   入れていない: 超さいほう針(種44 z=2.25、種55 z=0.50)・プラチナさいほう針(種44 z=0.96。戻りの地金は計画が戻りを見ていない)・
+  //   ヴェーレダガー(−15.3)・影星の短刀(−8.8)・スパイラルダガー(−23.1)。この3商材は残りが遠く、遠い方のマスを進める間に
+  //   集中力を使い切る(未到達 87〜100%)。
+  //   奇跡のさいほう針・光のさいほう針・聖王のナイフの trap: 1 は、上の ldp2 の行に書いた。
+  グラフィアス: { trap: 1 },
 };
 // 商材ごとの先読みの設定(PRESETS の mc に入る)。決め打ちも先読みにかける(early)は V2.50 から全商材の既定(MC_EARLY)。
 //   既定にする前に、決め打ちの局面で候補ごとに試し打ちを2560回ずつ記録し(選ぶのに1280回、答え合わせに別の1280回)、
@@ -570,16 +588,19 @@ const ITEM_MC = {
 //   光のフライパン 83.5%(78〜88%)/ 聖域のこて 72.0%(65〜78%)/ 聖域の闘衣下 71.5%(65〜77%)/ 光の錬金ランプ 68.0%(61〜74%)
 //   (実戦の記録がある11商材はこれで全部測った)
 //   (先読みありの率は、実戦の記録がある商材だけ測る(利用者の指示 2026-10-10)。それ以外は「検証中」と簡易の値)
+//   光のさいほう針・奇跡のさいほう針は、V2.80 で打ち方を変えた(ldp2・2マス同時の罠)ので、先読みありで測り直すまで目安を外して
+//   「検証中」にした(利用者の指示 2026-10-10)。上の値は V2.60 のエンジンのもの。
 const PRESET_RATES = { kagayaki:75, amatsuyu:70, hidane:85, kimonsho:75, bloom:65, orb:75, yumon:40, kajihammer:85, maoulamp:70,
-  光のさいほう針:55, 奇跡のさいほう針:55, 守護竜のつるぎ:55, はやぶさの剣改:60, 聖域の額当て:70, あくまの錬金ツボ:80, 光の錬金ツボ:85,
+  守護竜のつるぎ:55, はやぶさの剣改:60, 聖域の額当て:70, あくまの錬金ツボ:80, 光の錬金ツボ:85,
   光のフライパン:85, 聖域のこて:70, 聖域の闘衣下:70, 光の錬金ランプ:70 };
 for(const k of Object.keys(PRESET_RATES)) if(PRESETS[k]) PRESETS[k].rate = PRESET_RATES[k];
 // 先読みをしない打ち方(貪欲)の大成功率(%)。商材の選択欄に「簡易 ◯%」と薄い字で出す参考値(利用者の指示)。
 // 先読みありの目安(PRESET_RATES)は実際に近い値、こちらは全商材を速く測れる簡易の値。先読みが無い分、多くの商材で低めに出る。
-// 測り方: 職人Lv80・光のハンマー★3・乱数テープ・種44・各1000局(95%の範囲は ±3pt ほど)。V2.60 のエンジン。
+// 測り方: 職人Lv80・光のハンマー★3・乱数テープ・種44・各1000局(95%の範囲は ±3pt ほど)。V2.60 のエンジン
+// (V2.80 で打ち方を変えた5商材(奇跡・光・超さいほう針、聖王のナイフ、グラフィアス)は V2.80 のエンジンで測り直した)。
 // 推奨手を変えたら node tools/greedy-rates.js --write 1 で測り直して置き換える。
 const PRESET_GREEDY = {
-  奇跡の鍛冶ハンマー:59.3, kajihammer:76.8, 奇跡のさいほう針:52.5, 光のさいほう針:51.9, 奇跡の木工刀:49,
+  奇跡の鍛冶ハンマー:59.3, kajihammer:76.8, 奇跡のさいほう針:60.5, 光のさいほう針:61.3, 奇跡の木工刀:49,
   光の木工刀:56.1, 奇跡の錬金ランプ:48.3, 光の錬金ランプ:65.5, 奇跡の錬金ツボ:69.3, 光の錬金ツボ:76,
   奇跡のフライパン:62.5, 光のフライパン:75.2, orb:66.9, amatsuyu:52.6, kagayaki:59,
   hidane:56.1, 黄金の飾り片手剣:73.6, 黄金の飾り両手剣:62.3, 黄金の飾り短剣:79.5, 黄金の飾りヤリ:60.6,
@@ -587,7 +608,7 @@ const PRESET_GREEDY = {
   黄金の飾りスティック:66.6, 黄金の飾り両手杖:69.8, 黄金の飾り棍:64.7, 黄金の飾り扇:64.5, 黄金の飾り弓:68,
   黄金の飾り盾:70.5, 黄金の飾りかぶと:70.5, 黄金の飾りよろい上:67.1, 黄金の飾りよろい下:69.4, 黄金の飾りこて:82.5,
   黄金の飾りくつ:71.3, 色飾りタイルのランプ:67, プラチナ鍛冶ハンマ:59.1, プラチナさいほう針:75.1, プラチナ木工刀:70,
-  プラチナ錬金ランプ:47, プラチナ錬金ツボ:64.7, プラチナフライパン:65.2, 超鍛冶ハンマー:60.1, 超さいほう針:55.1,
+  プラチナ錬金ランプ:47, プラチナ錬金ツボ:64.7, プラチナフライパン:65.2, 超鍛冶ハンマー:60.1, 超さいほう針:69.6,
   超木工刀:52.2, 超錬金ランプ:55.2, 超錬金ツボ:70.3, 超フライパン:78.2, maoulamp:58.9,
   まおうのランプ呪文:60.3, あくまの錬金ツボ:57.2, あくまのツボ呪文:57.2, ぎんのルアー:54.3, プラチナルアー:51.8,
   マデュライトルアー:57.9, 天使のルアー:58.5, トゲトゲルアー:51.2, やいばのルアー:50.6, メタスラの盾:50.2,
@@ -604,7 +625,7 @@ const PRESET_GREEDY = {
   ゴシックニーソ:64.3, ガナドールブーツ:77.2, 聖域のブーツ:79.7, 魔衛隊士のグリーブ:45.8, コスモスグリーブ:55.2,
   トライドブーツ:67, 一角鬼の脚半:56.1, 黒夜叉の脚甲:73, メタリオンガード:46.1, メタリオンシールド:44.9,
   鷲王の盾:59.6, はやぶさの剣改:48.2, 守護竜のつるぎ:46.3, 天馬の大剣:75.8, ネビュラスブレード:30.6,
-  聖王のナイフ:49.6, ヴェーレダガー:31, 影星の短刀:30.8, クロワランス:49.6, ミカヅチのやり:36.1,
+  聖王のナイフ:59.1, ヴェーレダガー:31, 影星の短刀:30.8, クロワランス:49.6, ミカヅチのやり:36.1,
   ふぶきのオノ:60.5, セレーネアックス:50.8, キャンサークロー:60.9, 呪星のツメ:35.6, グリンガムのムチ:59.9,
   ミスティカルソーン:44.4, ボルカノハンマー:66.6, ポラリスハンマー:37, クリスターライト:44.4, ステラトルネード:52.9,
   レイヴンサイズ:48.1, yumon:38.2, メタリオンブレード:50.2, スパイラルダガー:53.3, メタリオンスピア:36,
@@ -612,7 +633,7 @@ const PRESET_GREEDY = {
   メタリオンサイズ:38.3, レオンソード:39.7, 獅子の大剣:59.3, ピスケスエッジ:45.1, アメジストライク:65.8,
   蛮災の鎌:37.2, 不浄の滅剣:54.7, スコーピオサイス:28.7, オフビートクロー:41.8, カプリコルランス:45.4,
   ウィズダムサイス:51, コメットソード:38.9, モアクラッシュ:57.8, セーラスサイズ:40.3, セーラスエッジ:60.8,
-  グラフィアス:46.2, メタルウィング:75.3, 魔除けの鎌:65, 輝天の鎌:47.2,
+  グラフィアス:50.6, メタルウィング:75.3, 魔除けの鎌:65, 輝天の鎌:47.2,
 };
 for(const k of Object.keys(PRESET_GREEDY)) if(PRESETS[k]) PRESETS[k].greedy = PRESET_GREEDY[k];
 
@@ -1326,6 +1347,190 @@ function twoMassMove(ms, f, t, P, cfg){
   return { sk: best, tg: best.masses ? [i] : [], c: actualCostOf(best, t, cfg.trait), nt: Math.max(0, t + best.tempDelta), overP: 0 };
 }
 
+// ---- 2マス同時の罠(trap、既定 0。2マス縦・許容誤差0の商材に、商材ごとに入れる) ----
+// 上下ねらい打ちは縦の2マスに同時に当たり、会心はマスごとに出る。会心は理想値を越える時だけ理想値で止まるので、
+// 2マスとも「会心でなければゾーンに届かない(残り > 最大ロール)・会心なら必ず理想値を越える(2×最小ロール ≧ 残り+幅−1)」
+// 距離(罠の距離)にある時に撃てば、会心したマスはちょうど理想値で止まり、会心しなかったマスはゾーンの手前に残ってやり直せる。
+// 威力が2倍になる温度(たたき変化の400の倍数)ほど、罠の距離は遠く広い(奇跡のさいほう針の 2000℃: A 67〜86・B 67〜78)。
+// 針で2マス同時の総当たり(集中力・温度・2マスの残り距離の約3億局面)の手で打つと大成功が +9〜13pt 上がり、
+// その手の多くは「2マスの残りを罠の距離にそろえ、火力上げで 2000℃・1600℃ などに着けてから上下ねらい打ち」だった
+// (docs/先読みの見直し.md の 7-6)。総当たりそのものはアプリでは重すぎるので、この形だけを計画にする:
+// ・状態 (温度, 2マスの残り距離) の総当たり。集中力は状態に持たず、使った集中力 × trapL × (1 − trapK) を引く。
+//   上下ねらい打ちを撃った時の値は、マスごとに「会心: 理想値を越える割合(越えなければ trapR)/ 会心でない: ゾーンの手前に
+//   残れば trapR・ゾーンに入れば 1/幅・超えたら 0」を出して掛け、罠の距離で 1 になるように割る(trapR はやり直しの見込み)。
+//   どちらかのマスが、一番近い罠の距離より近づいたら値 trapK(罠をあきらめて今の打ち方に戻る)。値が trapK 以下の局面では使わない。
+// ・2マスとも計画の範囲(残り trapG 以内)に入るまでは、遠い方のマスだけを今の打ち方で進める(近い方は仕上がったものとして隠す)。
+// 計画は条件(ゾーン・地金・職人Lv・ハンマー・設定)ごとに1回だけ作る(Node で約3秒・4MB)。先読みの試行の中でも同じ計画で打つ。
+const TRAP_CACHE = new Map();
+function trapPlan(ms, idx, cfg, P){
+  const GM = P.trapG || 160, kappa = P.trapK, eps = P.trapL * (1 - kappa), rho = P.trapR || 0;
+  const key = [idx.map(i => ms[i].zoneLow + '-' + ms[i].zoneHigh).join('/'), cfg.trait, cfg.level, cfg.hammerId, cfg.star, GM, kappa, eps, rho].join('|');
+  if(TRAP_CACHE.has(key)) return TRAP_CACHE.get(key);
+  const saved = simFirstMove;
+  simFirstMove = false;                  // 地金特性が乗った後のロールと会心率で作る
+  let plan = null;
+  try{ plan = trapBuild(ms, idx, cfg, GM, kappa, eps, rho); } finally { simFirstMove = saved; }
+  TRAP_CACHE.set(key, plan);
+  return plan;
+}
+function trapBuild(ms, idx, cfg, GM, kappa, eps, rho){
+  const trait = cfg.trait, NT = LDP_NT;
+  const jn = SKILLS.find(s => s.id === 'jouge_nerai' && s.lv <= cfg.level);
+  if(!jn || !enumerateTargetSets(jn).some(tg => tg.length === 2 && tg.includes(idx[0]) && tg.includes(idx[1]))) return null;
+  const W = idx.map(i => ms[i].zoneHigh - ms[i].zoneLow + 1);
+  // 一番近い罠の距離(これより近づいたら罠をあきらめる)。罠の距離は温度ごとに [最大ロール+1, 2×最小ロール−幅+1]。
+  // 見る温度は、たたき変化は威力2倍の400の倍数、集中力変化は会心ターン(200の倍数で400の倍数でない)、ほかはすべて
+  const strong = T => trait === 'tataki' ? T % 400 === 0 : trait === 'shuchu' ? (T % 200 === 0 && T % 400 !== 0) : true;
+  const gmin = [Infinity, Infinity];
+  for(let t = 0; t < NT; t++){
+    if(!strong((t + 1) * 50)) continue;
+    const r = getRollCandidates(jn, (t + 1) * 50, trait, false);
+    const lo = r[6] + 1;
+    if(W.every(w => 2 * r[0] - w + 1 >= lo)) for(let m = 0; m < 2; m++) gmin[m] = Math.min(gmin[m], lo);
+  }
+  if(gmin.some(g => g > GM)) return null;
+  // 上下ねらい打ちを撃った時の、マスごとの値(罠の距離で 1)
+  let ref = 0;
+  const fire = [];
+  for(let t = 0; t < NT; t++){
+    const T = (t + 1) * 50, cr = computeCritRate(jn, cfg.level, cfg.hammerId, cfg.star, trait, T, false);
+    ref = Math.max(ref, cr + (1 - cr) * rho);
+  }
+  for(let t = 0; t < NT; t++){
+    const T = (t + 1) * 50, r = getRollCandidates(jn, T, trait, false), cr = computeCritRate(jn, cfg.level, cfg.hammerId, cfg.star, trait, T, false);
+    fire.push(W.map(w => {
+      const a = new Float32Array(GM + 1);
+      for(let g = 1; g <= GM; g++){
+        let v = 0;
+        for(const x of r){
+          v += cr / 7 * (2 * x >= g ? Math.min(1, (2 * x - g + 1) / w) : rho);
+          v += (1 - cr) / 7 * (x < g ? rho : x - g <= w - 1 ? 1 / w : 0);
+        }
+        a[g] = v / ref;
+      }
+      return a;
+    }));
+  }
+  // 寄せの手: 叩く手は当たるマスの組(1 = A だけ・2 = B だけ・3 = 両方)ごと。同じ威力・組・温度の変化で消費が多い手(4連打ち)は除く
+  const hits = [], temps = [];
+  for(const sk of SKILLS){
+    if(sk.lv > cfg.level || sk.random || sk.id === 'jouge_nerai') continue;
+    if(!sk.key){ temps.push(sk); continue; }
+    const sets = new Set();
+    for(const tg of enumerateTargetSets(sk)){
+      const s = (tg.includes(idx[0]) ? 1 : 0) | (tg.includes(idx[1]) ? 2 : 0);
+      if(s) sets.add(s);
+    }
+    for(const s of sets){
+      const same = hits.findIndex(h => h.s === s && h.sk.key === sk.key && h.sk.tempDelta === sk.tempDelta && !!h.sk.crit === !!sk.crit);
+      if(same >= 0){ if(hits[same].sk.cost <= sk.cost) continue; hits.splice(same, 1); }
+      const rows = [];
+      for(let t = 0; t < NT; t++){
+        const T = (t + 1) * 50, nt = T + sk.tempDelta;
+        if(nt < 50 || nt > LDP_TMAX){ rows.push(null); continue; }
+        const r = getRollCandidates(sk, T, trait, false), cr = computeCritRate(sk, cfg.level, cfg.hammerId, cfg.star, trait, T, false);
+        const o = new Map();
+        for(const x of r){ o.set(x, (o.get(x) || 0) + (1 - cr) / 7); if(cr > 0) o.set(2 * x, (o.get(2 * x) || 0) + cr / 7); }
+        rows.push({ c: actualCostOf(sk, T, trait), nti: nt / 50 - 1, d: Int32Array.from(o.keys()), p: Float64Array.from(o.values()) });
+      }
+      hits.push({ sk, s, rows });
+    }
+  }
+  const tmv = temps.map(sk => { const a = []; for(let t = 0; t < NT; t++){ const nt = (t + 1) * 50 + sk.tempDelta;
+    a.push(nt < 50 || nt > LDP_TMAX ? null : { c: actualCostOf(sk, (t + 1) * 50, trait), nti: nt / 50 - 1 }); } return a; });
+  const NA = GM - gmin[0] + 1, NB = GM - gmin[1] + 1, A0 = gmin[0], B0 = gmin[1], NAB = NA * NB;
+  const I = (t, a, b) => t * NAB + (a - A0) * NB + (b - B0);
+  const V = new Float32Array(NT * NAB), ACT = new Int16Array(NT * NAB).fill(-1);
+  const fireC = []; for(let t = 0; t < NT; t++) fireC.push(eps * actualCostOf(jn, (t + 1) * 50, trait));
+  // 叩く手は残り距離を必ず減らすので、2マスの残りの合計が小さい局面から順に決まる。
+  // 温度だけの手(火力上げ・冷やし込み)は同じ残り距離の中で温度を動かすので、値が変わらなくなるまで繰り返す
+  for(let s = A0 + B0; s <= 2 * GM; s++){
+    for(let a = Math.max(A0, s - GM); a <= Math.min(GM, s - B0); a++){
+      const b = s - a, ab = (a - A0) * NB + (b - B0);
+      for(let t = 0; t < NT; t++){
+        let best = fire[t][0][a] * fire[t][1][b] - fireC[t], ba = 1000;
+        for(let h = 0; h < hits.length; h++){
+          const x = hits[h], row = x.rows[t];
+          if(!row) continue;
+          const d = row.d, p = row.p, n = d.length, off = row.nti * NAB;
+          let q = -eps * row.c;
+          if(x.s === 1){ for(let k = 0; k < n; k++){ const a2 = a - d[k]; q += p[k] * (a2 < A0 ? kappa : V[off + (a2 - A0) * NB + (b - B0)]); } }
+          else if(x.s === 2){ for(let k = 0; k < n; k++){ const b2 = b - d[k]; q += p[k] * (b2 < B0 ? kappa : V[off + (a - A0) * NB + (b2 - B0)]); } }
+          else {
+            for(let k = 0; k < n; k++){
+              const a2 = a - d[k];
+              if(a2 < A0){ q += p[k] * kappa; continue; }
+              const o2 = off + (a2 - A0) * NB - B0;
+              let qk = 0;
+              for(let j = 0; j < n; j++){ const b2 = b - d[j]; qk += p[j] * (b2 < B0 ? kappa : V[o2 + b2]); }
+              q += p[k] * qk;
+            }
+          }
+          if(q > best){ best = q; ba = h; }
+        }
+        V[t * NAB + ab] = best; ACT[t * NAB + ab] = ba;
+      }
+      for(let it = 0; it < 12; it++){
+        let ch = false;
+        for(let t = 0; t < NT; t++) for(let k = 0; k < temps.length; k++){
+          const r = tmv[k][t];
+          if(!r) continue;
+          const q = V[r.nti * NAB + ab] - eps * r.c;
+          if(q > V[t * NAB + ab] + 1e-9){ V[t * NAB + ab] = q; ACT[t * NAB + ab] = 2000 + k; ch = true; }
+        }
+        if(!ch) break;
+      }
+    }
+  }
+  return { jn, idx, gmin, GM, kappa, V, ACT, I, hits, temps };
+}
+function trapMove(ms, f, t, P, cfg){
+  if(isStartState() || HS !== 0) return null;
+  // 残りが2マス(ほかのマスはゾーン内)の時だけ。2マスの商材なら打ち始めから
+  const idx = [];
+  for(let j = 0; j < ms.length; j++){
+    if(ms[j].zoneHigh <= 0) continue;
+    if(ms[j].current > ms[j].zoneHigh) return null;
+    if(ms[j].current < ms[j].zoneLow) idx.push(j);
+  }
+  if(idx.length !== 2) return null;
+  // trapZ(実験): ほかのマスの誤差で、残る2マスに許される誤差が0になっている見込みが trapZ 以上の時だけ使う
+  // (罠は「ちょうど理想値」だけを狙うので、誤差が許される時は遠回りになる)
+  if(P.trapZ > 0){
+    const th = SUCCESS_THRESHOLD, dist = finishedErrDist(ms, idx[0], th, idx[1]);
+    if(!dist) return null;
+    const sum = dist.reduce((a, v) => a + v, 0);
+    if(sum <= 0 || dist[th] / sum < P.trapZ) return null;
+  }
+  const plan = trapPlan(ms, idx, cfg, P);
+  if(!plan) return null;
+  const a = ms[idx[0]].zoneLow - ms[idx[0]].current, b = ms[idx[1]].zoneLow - ms[idx[1]].current;
+  if(a > plan.GM || b > plan.GM){
+    // 寄せ: 計画の範囲の外にいる遠い方のマスだけを今の打ち方で進める(近い方は仕上がったものとして隠す)
+    const near = idx[a - plan.gmin[0] >= b - plan.gmin[1] ? 1 : 0];
+    const msk = ms.map(m => ({ current: m.current, zoneLow: m.zoneLow, zoneHigh: m.zoneHigh }));
+    msk[near].current = msk[near].zoneLow;
+    const sR = RANK, sC = LDP2_CAND;
+    RANK = null;
+    let mv;
+    try{ mv = stratB(msk, f, t, Object.assign({}, P, { trap: 0 }), cfg); } finally { RANK = sR; LDP2_CAND = sC; }
+    if(!mv) return null;
+    const tg = (mv.tg || []).filter(i => i !== near);
+    if(mv.sk.key && !tg.length) return null;
+    return Object.assign({}, mv, { tg });
+  }
+  if(a < plan.gmin[0] || b < plan.gmin[1] || t % 50 || t < 50 || t > LDP_TMAX) return null;
+  const k = plan.I(t / 50 - 1, a, b), act = plan.ACT[k];
+  if(plan.V[k] <= plan.kappa || act < 0) return null;
+  let sk, tg;
+  if(act === 1000){ sk = plan.jn; tg = idx.slice(); }
+  else if(act >= 2000){ sk = plan.temps[act - 2000]; tg = []; }
+  else { const h = plan.hits[act]; sk = h.sk; tg = h.s === 3 ? idx.slice() : [idx[h.s === 1 ? 0 : 1]]; }
+  const c = actualCostOf(sk, t, cfg.trait), nt = t + sk.tempDelta;
+  if(c > f || nt <= 0) return null;
+  return { sk, tg, c, nt, overP: 0, trapV: plan.V[k] };
+}
+
 function traitTempState(temp){
   const mod400 = temp % 400 === 0;
   const mod200 = temp % 200 === 0 && !mod400;
@@ -1467,6 +1672,8 @@ function massError(current, ideal, zoneLow, zoneHigh){
 //   hsSetup : 必殺がチャージ済みの間、超4連打ちの形の4マスを詰めてから使う(hsDecide。1で使う。全商材・手動設定の既定)
 //   boostEff : 会心ターンの狙い打ち(boostAim)の前に、残るマスの残り距離の合計 ÷ boostEff の集中力を残す(既定 0 = 見ない)
 //   psEff : 2マス同時の本会心(pairSnipe)の前に、残るマスの残り距離の合計 ÷ psEff の集中力を残す(既定 0 = 見ない)
+//   trap : 2マス縦・許容誤差0で、2マス同時の罠(上下ねらい打ち)へ寄せる計画を使う(trapMove。既定 0、商材ごとに 1)。
+//          trapK・trapL・trapR・trapG はその計画の設定(既定 0.8・0.0067・0.65・160。trapMove の上の説明を参照)
 /* 評価パラメータ。素材ごとの効き方は検証済み(0にした時に結果が変わる対局の割合)。
    両方       cap adv land heat ov pr tmax te center far mpm slack effK slackMax
               rush wideAim pairSnipe
@@ -1475,7 +1682,7 @@ function massError(current, ideal, zoneLow, zoneHigh){
    ※ 樹液=超かがやきの樹液(集中力変化) / いと=超あまつゆのいと(たたき変化) */
 const PARAMS = { cap:12, adv:0.75, land:3, heat:4, ov:4, pr:0.8, tmax:2200,
                  te:5, rush:0.6, save:25, turn:5, tatakiFit:1.5, boostPlan:1, center:3, opening:1, wideAim:2, pairSnipe:1, far:5, mpm:16, slack:1, effK:4, slackMax:2, saveCap:0.7, boostAim:0.7, boostRes:24, x2turn:10, aimNow:1, aimRes:2.2,
-                 lastDP:1, lastDProll:1, er:1, hsSetup:1 };
+                 lastDP:1, lastDProll:1, er:1, hsSetup:1, trapK:0.8, trapL:0.0067, trapR:0.65, trapG:160 };
 // 既定の重み。素材ごとの上書き(PRESETS の params)は applyThreshold が重ねる。
 const BASE_PARAMS = Object.freeze(Object.assign({}, PARAMS));
 
@@ -2202,6 +2409,11 @@ function stratB0(ms,f,t,P,cfg){
   if(P.lastDP > 0 && (P.lastDProll > 0 || !IN_ROLLOUT)){
     const lm = lastMassMove(ms, f, t, P, cfg);
     if(lm) return lm;
+  }
+  // ---- 2マス縦・許容誤差0: 2マス同時の罠へ寄せる計画(trap) ----
+  if(P.trap > 0){
+    const tm = trapMove(ms, f, t, P, cfg);
+    if(tm) return tm;
   }
   if(P.ldp2 > 0 && !IN_ROLLOUT){
     const m2 = twoMassMove(ms, f, t, P, cfg);
@@ -3055,7 +3267,7 @@ function mcPrepare(ms, f, t, P, cfg){
       // 温度不足の火力上げは除く(先読みにしても良くならなかった)。
       const ret = pool[0] || stratB(ms, f, t, P, cfg);
       if(!ret || ret.sk.id === 'karyoku') return { move: ret };
-      const P2 = Object.assign({}, P, { pairSnipe:0, boostAim:0, aimNow:0, opening:0, boostPlan:0, heat:-1000 });
+      const P2 = Object.assign({}, P, { pairSnipe:0, boostAim:0, aimNow:0, opening:0, boostPlan:0, heat:-1000, trap:0 });
       const key = x => x.sk.id + '|' + (x.tg || []).join(',');
       const rest = rankedMoves(ms, f, t, P2, cfg, mc.K + 1).filter(x => key(x) !== key(ret));
       const pl = [ret, ...rest].slice(0, mc.K);
