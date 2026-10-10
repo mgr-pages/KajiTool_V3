@@ -1494,6 +1494,14 @@ function trapMove(ms, f, t, P, cfg){
     if(ms[j].current < ms[j].zoneLow) idx.push(j);
   }
   if(idx.length !== 2) return null;
+  // trapZ(実験): ほかのマスの誤差で、残る2マスに許される誤差が0になっている見込みが trapZ 以上の時だけ使う
+  // (罠は「ちょうど理想値」だけを狙うので、誤差が許される時は遠回りになる)
+  if(P.trapZ > 0){
+    const th = SUCCESS_THRESHOLD, dist = finishedErrDist(ms, idx[0], th, idx[1]);
+    if(!dist) return null;
+    const sum = dist.reduce((a, v) => a + v, 0);
+    if(sum <= 0 || dist[th] / sum < P.trapZ) return null;
+  }
   const plan = trapPlan(ms, idx, cfg, P);
   if(!plan) return null;
   const a = ms[idx[0]].zoneLow - ms[idx[0]].current, b = ms[idx[1]].zoneLow - ms[idx[1]].current;
