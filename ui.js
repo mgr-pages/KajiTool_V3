@@ -1033,6 +1033,7 @@ function onPresetChange(v){
     const acc = document.getElementById('setAcc');
     if(acc) acc.open = true;
     renderAll(); save();
+    box.scrollIntoView({ block: 'start', behavior: 'smooth' });
     return;
   }
   // 打ち始めた後は、結果を選んでから切り替える(選ばなければ切り替えない)
@@ -1059,6 +1060,7 @@ function renderZoneRows(){
   const el = document.getElementById('zoneRows');
   if(!el) return;
   markZoneDirty(false);
+  document.querySelectorAll('#zoneSize button').forEach(b => b.classList.toggle('on', Number(b.dataset.n) === G.masses.length));
   el.innerHTML = G.masses.map((m,i)=>{
     const on = !m.off;
     // 無効化したマスはゾーンを0にしているので、入力欄には控えを表示する
@@ -1075,6 +1077,21 @@ function renderZoneRows(){
               oninput="markZoneDirty()">
      </div>`;}).join('');
   showZoneThreshold();
+}
+// 手動設定の盤の大きさ(6マス=3段 / 8マス=4段)。8マスにすると、マス7・8を使わない状態で足す(チェックを入れて使う)。
+// 6マスに戻す時は、マス7・8を消す。盤の形が変わるので、盤面と履歴は最初に戻す。
+function setCustomSize(n){
+  if(G.preset !== 'custom' || (n !== 6 && n !== 8) || G.masses.length === n) return;
+  if(n === 6 && G.masses.slice(6).some(m => !m.off) && !confirm('マス7・8の設定を消して、6マスの盤にします。よろしいですか?')) return;
+  if(GameLog.active()){ askOutcome(() => resizeCustom(n)); return; }
+  const started = G.hist.length > 0 || G.masses.some(m => m.current > 0);
+  if(started && !confirm('盤の大きさを変えると、盤面と履歴が最初に戻ります。よろしいですか?')) return;
+  resizeCustom(n);
+}
+function resizeCustom(n){
+  if(n === 8) while(G.masses.length < 8) G.masses.push({ current:0, zoneLow:0, zoneHigh:0, off:true });
+  else G.masses = G.masses.slice(0, 6);
+  resetAll();                       // 手動設定はゾーンと使うマスを引き継いで、数値だけ最初に戻す
 }
 // 許容誤差はチェックの入ったマスの数で決まるので、入切に合わせてその場で出す
 function showZoneThreshold(){
@@ -1167,7 +1184,7 @@ function resetAll(){
   const kind = G.preset || 'kagayaki';
   // 手動設定なら現在のゾーンを保持し、数値だけ戻す
   // 手動設定はやり直しても、入力したゾーンと使用マスの設定を引き継ぐ
-  const keep = (kind === 'custom' && G.masses.length === 6)
+  const keep = (kind === 'custom' && (G.masses.length === 6 || G.masses.length === 8))
     ? G.masses.map(m=>({lo:m.zoneLow, hi:m.zoneHigh, off:!!m.off, oLo:m.oLo, oHi:m.oHi}))
     : (PRESETS[kind] ? PRESETS[kind].zones : PRESETS.kagayaki.zones)
         .map(([lo,hi],i)=>({lo, hi, off: !!(PRESETS[kind] && PRESETS[kind].off && PRESETS[kind].off.includes(i))}));
@@ -1240,6 +1257,8 @@ function load(){
 // (利用者の指示。同じレベルは CRAFT_ITEMS の順)。開いた時は今の商材の種類の一覧から始め、
 // 上の道しるべで前の段に戻る。大成功率の目安(PRESETS の rate)がある商材は、名前の横に出す。
 // 目安をまだ測っていない商材は「検証中」と出す(利用者の指示)。
+// その下に、先読みをしない打ち方(貪欲)で測った率を「簡易 ◯%」と薄い字で出す(PRESETS の greedy。全商材にある。利用者の指示)。
+// 先読みの目安は実際に近い値、簡易は参考値(先読みが無い分、多くの商材で目安より低い)。
 const PICK_JOBS = ['武器', '防具', '道具'];
 const PICK_TREE = new Map();          // 職人 → 種類 → 商材のキーの並び
 for(const j of PICK_JOBS) PICK_TREE.set(j, new Map());
@@ -1289,15 +1308,17 @@ function renderPicker(){
     h = '<div class="pk-list">';
     for(const k of ks){
       const p = PRESETS[k];
-      const rate = typeof p.rate === 'number' ? `<span class="pk-rate">約${p.rate}%</span>` : '<span class="pk-rate pending">検証中</span>';
+      const main = typeof p.rate === 'number' ? `<span class="pk-rate">約${p.rate}%</span>` : '<span class="pk-rate pending">検証中</span>';
+      const ref = typeof p.greedy === 'number' ? `<span class="pk-ref">簡易 ${Math.round(p.greedy / 5) * 5}%</span>` : '';
       h += `<button class="pk-item${k === G.preset ? ' cur' : ''}" data-key="${esc(k)}">`
-         + `<span class="pk-name">${esc(p.name)}</span>${rate}<span class="pk-lv">Lv${p.craft}</span></button>`;
+         + `<span class="pk-name">${esc(p.name)}</span><span class="pk-rates">${main}${ref}</span><span class="pk-lv">Lv${p.craft}</span></button>`;
     }
     h += '</div>';
+    // 見方は1行にまとめる(「検証中」はそのままで分かるので説明しない)
     const notes = [];
-    if(ks.some(k => typeof PRESETS[k].rate === 'number')) notes.push('約◯%=大成功率の目安(Lv80・光★3)');
-    if(ks.some(k => typeof PRESETS[k].rate !== 'number')) notes.push('検証中=まだ測っていない');
-    if(notes.length) h += `<div class="pk-note">${notes.join(' / ')}</div>`;
+    if(ks.some(k => typeof PRESETS[k].rate === 'number')) notes.push('約◯%=大成功率の目安');
+    if(ks.some(k => typeof PRESETS[k].greedy === 'number')) notes.push('簡易=先読みなしの参考値');
+    if(notes.length) h += `<div class="pk-note">${notes.join(' / ')}(Lv80・光★3)</div>`;
   }
   document.getElementById('pkBody').innerHTML = h;
 }

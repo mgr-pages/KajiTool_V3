@@ -7,6 +7,7 @@
      node tools/crit-report.js 集計.json
      node tools/crit-report.js 集計.json 光★3      装備を1つに絞る(省くと装備ごとに分けて全部出す)
 
+   数えるのは、会心かどうかを値で区別できる打撃だけ(log-collector.gs が、どちらとも取れる値と古い版の記録を除いて数える)。
    装備(ハンマー・できのよさ・職人Lv)ごとに分けて推定する。ハンマーとできのよさで基礎の会心率が変わるので、
    混ぜると、ずれがハンマーの会心率の値から来たのか、上乗せから来たのかを見分けられない。
 
@@ -40,7 +41,7 @@ function report(eq, G){
   console.log('');
   console.log(`==== 装備 ${eq}(対局 ${recs === undefined ? '—' : recs}${G[0] && G[0].base !== undefined ? '、基礎の会心率 ' + f1(G[0].base) : ''}) ====`);
   console.log('地金特性        状況        技        叩いた 会心  会心率(実測 / 見込み)  基礎に対する倍率(実測 / エンジン)  見込みとの差');
-  for(const g of G){
+  for(const g of G.filter(x => x.n > 0)){
     // 見込みとの差: z = (会心の回数 − 見込みの合計) ÷ √(見込み×(1−見込み) の合計)。古い集計(sumVar が無い)は出さない
     const z = g.sumVar > 0 ? (g.crit - g.sumCr) / Math.sqrt(g.sumVar) : null;
     const zs = z === null ? '' : `z=${z.toFixed(2)}${g.n < 30 ? '(少ない)' : Math.abs(z) < 2 ? '(誤差の範囲)' : '(ずれ)'}`;

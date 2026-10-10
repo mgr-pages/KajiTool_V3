@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>鍛冶アドバイザーV2.53</title>
+<title>鍛冶アドバイザーV2.60</title>
 <!-- アプリのアイコン。PNG は icon.svg から node tools/make-icons.js で作る -->
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="style.css?v=5ded35fe">
+<link rel="stylesheet" href="style.css?v=19d0b9cf">
 </head>
 <body>
 
@@ -103,18 +103,17 @@
     <div id="zoneEdit" style="display:none">
       <div class="zpanel">
         <div class="zhead">手動設定</div>
-        <div class="zstep">
-          ① 上の「地金特性」を選ぶ<br>
-          ② 使うマスだけチェックを残す(外したマスは盤面から消えます)<br>
-          ③ 各マスの成功ゾーンを 下限〜上限 で入れる<br>
-          ④「ゾーンを反映」を押す(大成功の許容誤差は、使うマスの数で自動で決まります)
+        <div class="zstep">地金特性を選び、使うマスとゾーンを入れて反映</div>
+        <div class="zsize" id="zoneSize">
+          <span class="zl">盤</span>
+          <button type="button" data-n="6" onclick="setCustomSize(6)">6マス</button>
+          <button type="button" data-n="8" onclick="setCustomSize(8)">8マス</button>
         </div>
         <div id="zoneRows"></div>
         <div class="zrow zth">
           <span class="zl">許容誤差</span>
           <span class="zs" id="z-th-auto"></span>
         </div>
-        <div class="zth-note">使うマスの数で決まります: 2マス 0・3マス 2・4マス 3・5マス 5・6マス 7</div>
         <div id="zoneWarn" style="font-size:11.5px;color:#e5534b;margin-top:6px;display:none"></div>
         <div style="display:flex;align-items:center;margin-top:8px">
           <button class="calc" style="flex:0 0 auto" onclick="applyZones()">ゾーンを反映</button>
@@ -192,9 +191,9 @@
   </div>
 </div>
 
-<script src="engine.js?v=5ded35fe"></script>
-<script src="mc-pool.js?v=5ded35fe"></script>
-<script src="gamelog.js?v=5ded35fe"></script>
-<script src="ui.js?v=5ded35fe"></script>
+<script src="engine.js?v=19d0b9cf"></script>
+<script src="mc-pool.js?v=19d0b9cf"></script>
+<script src="gamelog.js?v=19d0b9cf"></script>
+<script src="ui.js?v=19d0b9cf"></script>
 </body>
 </html>
